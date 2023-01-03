@@ -1,7 +1,7 @@
 import pandas as pd
 configfile: "configs/config.yaml"
 
-samples = pd.read_csv(config["METAFILE"], sep = ';', header = 0)['Sample']
+samples = pd.read_csv(config["METAFILE"], sep = ',', header = 0)['Group']
 events = ['alt_3prime','alt_5prime','exon_skip','intron_retention','mult_exon_skip','mutex_exons']
 final_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome"
 splad_out = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome/spladder"
@@ -42,4 +42,4 @@ rule markdown:
     output:
         'scripts/Spladder.pdf'
     shell:
-        "Rscript -e \"rmarkdown::render('scripts/Spladder.Rmd', params=list(param1='{input.param1}', param2='{input.param2}'))\""
+        "Rscript -e \"rmarkdown::render('scripts/Spladder.Rmd')\""
