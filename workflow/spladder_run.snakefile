@@ -10,31 +10,31 @@ bb_path = config["BB_PATH"]
 
 rule end:
     input:
-        expand(splad_out+"/merge_graphs_{event}_C3.confirmed.txt.gz", event=events),
-        expand(final_path + "/bamFileSort/{sample}.sort.bam.bai", sample=samples),
+        # expand(splad_out+"/merge_graphs_{event}_C3.confirmed.txt.gz", event=events),
+        # expand(final_path + "/bamFileSort/{sample}.sort.bam.bai", sample=samples),
         'scripts/Spladder.pdf'
 
-rule indexBams:
-    input:
-        BAM = final_path + "/bamFileSort/{sample}.sort.bam"
-    output:
-        BAI = final_path + "/bamFileSort/{sample}.sort.bam.bai"
-    shell:
-        "samtools index {input.BAM} > {output.BAI}"
-
-rule spladderBuild:
-    input:
-        BAM = expand(final_path+"/bamFileSort/{sample}.sort.bam", sample=samples)
-    output:
-        expand(splad_out+"/merge_graphs_{event}_C3.confirmed.txt.gz", event=events)
-    params:
-        GTF = config["ANNOTATION"],
-        files=lambda wildcards, input: ','.join(input),
-        BAI = expand(final_path + "/bamFileSort/{sample}.sort.bam.bai", sample=samples),
-        out = splad_out
-    shell:
-        "spladder build --bams {params.files} --annotation {params.GTF} --outdir {params.out}" # no paralel for dumb mac
-        #"spladder build --parallel {config[NCORE]} --bams {params.files} --annotation {params.GTF} --outdir {params.out}"
+# rule indexBams:
+#     input:
+#         BAM = final_path + "/bamFileSort/{sample}.sort.bam"
+#     output:
+#         BAI = final_path + "/bamFileSort/{sample}.sort.bam.bai"
+#     shell:
+#         "samtools index {input.BAM} > {output.BAI}"
+#
+# rule spladderBuild:
+#     input:
+#         BAM = expand(final_path+"/bamFileSort/{sample}.sort.bam", sample=samples)
+#     output:
+#         expand(splad_out+"/merge_graphs_{event}_C3.confirmed.txt.gz", event=events)
+#     params:
+#         GTF = config["ANNOTATION"],
+#         files=lambda wildcards, input: ','.join(input),
+#         BAI = expand(final_path + "/bamFileSort/{sample}.sort.bam.bai", sample=samples),
+#         out = splad_out
+#     shell:
+#         "spladder build --bams {params.files} --annotation {params.GTF} --outdir {params.out}" # no paralel for dumb mac
+#         #"spladder build --parallel {config[NCORE]} --bams {params.files} --annotation {params.GTF} --outdir {params.out}"
 
 rule markdown:
     input:
