@@ -11,7 +11,8 @@ bb_path = config["BB_PATH"]
 rule end:
     input:
         expand(splad_out+"/merge_graphs_{event}_C3.confirmed.txt.gz", event=events),
-        expand(final_path + "/bamFileSort/{sample}.sort.bam.bai", sample=samples)
+        expand(final_path + "/bamFileSort/{sample}.sort.bam.bai", sample=samples),
+        'scripts/Spladder.pdf'
 
 rule indexBams:
     input:
@@ -37,8 +38,8 @@ rule spladderBuild:
 
 rule markdown:
     input:
-        "scripts/Spladdder.Rmd"
+        "scripts/Spladder.Rmd"
     output:
-        'markdown.pdf'
+        'scripts/Spladder.pdf'
     shell:
-        "Rscript -e \"rmarkdown::render('scripts/Spladdder.Rmd', params=list(param1='{input.param1}', param2='{input.param2}'))\""
+        "Rscript -e \"rmarkdown::render('scripts/Spladder.Rmd', params=list(param1='{input.param1}', param2='{input.param2}'))\""

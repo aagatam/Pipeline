@@ -4,4 +4,4 @@ __pycache__/
 Output/
 logs/
 .DS_store
-
+.snakemake

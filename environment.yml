@@ -7,11 +7,12 @@ channels:
 dependencies:
   - snakemake=5.3.0
   - graphviz=2.40.1
+  - r-tinytex
 # command tool installs
   - R=3.6.0
   - python=3.8.1
   - pip
-  - interproscan 
+  - interproscan
 # r channel installs
 #  - r-yaml=2.2.0
 #  - r-statmod=1.4.30
