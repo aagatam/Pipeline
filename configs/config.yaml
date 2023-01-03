@@ -1,0 +1,50 @@
+# Please check the parameters, and adjust them according to your circumstance
+
+# project name
+PROJECT: Test
+
+## the path to fastq files
+
+INPUTPATH: /Users/agatamuszynska/Work/Pipeline/Test_data
+
+## the meta file describing the experiment settings
+METAFILE: configs/Description.csv
+
+## paths for intermediate and final outputs
+FINALOUTPUT: /Users/agatamuszynska/Work/Pipeline/Output
+
+## is the sequencing paired-end or pair-end?
+END: "single"  # "single" or "pair"?
+
+## is input uncompressed
+COMPRESSED: "yes" # "yes" or "no"
+
+## transcriptome file
+TRANS: /Users/agatamuszynska/Work/Pipeline/Test_data/Mus_musculus.GRCm38.cdna.all.fa
+
+## genome and annotation files
+GENOME:  /Users/agatamuszynska/Work/Pipeline/Test_data/Mus_musculus.GRCm39.dna.toplevel.fa
+ANNOTATION: /Users/agatamuszynska/Work/Pipeline/Test_data/Mus_musculus.GRCm39.104.gtf
+ATTRIBUTE: gene_id  # the attribute used in annotation file. It's usually "gene_id", but double check that since it may also be "gene", "ID"...
+
+## number of cores
+NCORE: 6
+
+## aligner Hisat2/Kallisto
+ALIGNER: Hisat2
+
+## tool for feature count
+COUNTER: StringTie
+
+## analyse alternative splicing?
+SPLADDER: "yes"
+
+## produce AS proteins?
+BISBEE: "yes"
+## Bisbbe path
+BB_PATH : /Users/agatamuszynska/Work/Pipeline/scripts/bisbee
+
+## analyse proteins?
+InterPro: "yes"
+## InterProScan path
+IP_PATH: /home/agata/Documents/Work/InterPro/interproscan-5.55-88.0
