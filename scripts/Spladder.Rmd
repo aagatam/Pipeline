@@ -3,17 +3,15 @@ title: "SplAdder for neuropathy- figures and tables"
 output:
   pdf_document: default
 params:
-  inpath: "/Users/agatamuszynska/Work/Pipeline/configs"
-  outpath: "/Users/agatamuszynska/Work/Pipeline"
-  splad_in_path: "/Users/agatamuszynska/Work/Pipeline/Output/Test/genome/spladder"
-  bisbee_in_path: "/Users/agatamuszynska/Work/Pipeline/Output/Test/genome/bisbee"
+  inpath: "../configs"
+
 ---
 
 
 ```{r "setup", include=FALSE}
 #sudo apt-get install -y libcurl4-openssl-dev <-for curlr
 #sudo apt-get install -y libxml2-dev <-for XML
-packages<-c("knitr","RColorBrewer","VennDiagram","veccompare","ggplot2","pals","dplyr","matrixStats","gplots","UpSetR","XML")
+packages<-c("knitr","RColorBrewer","VennDiagram","veccompare","ggplot2","pals","dplyr","matrixStats","gplots","UpSetR","XML","yaml")
 package.check <- lapply(
   packages,
   FUN = function(x) {
@@ -32,56 +30,56 @@ notInstalled <- which( !listOfBiocPackages %in% rownames(installed.packages()) )
 if( length(notInstalled) ) {
     BiocManager::install(listOfBiocPackages[ notInstalled ])
 }
-path<-params$inpath
-spl_path<-params$splad_in_path
-opts_knit$set(root.dir = path)
+path_configs<-params$inpath
+
+#opts_knit$set(root.dir = path)
 knitr::opts_chunk$set(echo=FALSE)
 ```
 
 ```{r,warning=FALSE,message=FALSE,include=FALSE}
 
-setwd(path)
-#save.image('Neuropathy_all_GrcM39_21_11.RData')
-#load("/Users/agatamuszynska/Work/Dell_work/Neuropathy_all_GRcM39/PSI_fliped_GRcM39.RData")
+Description<-read.table(paste(path_configs,'/Description.csv',sep=''),header=TRUE,sep=';')
+config<-read_yaml(paste(path_configs,'/config.yaml',sep=''),fileEncoding = "UTF-8")
+spl_path<-paste(config$FINALOUTPUT,config$PROJECT,'genome/spladder',sep='/')
+bb_path<-paste(config$FINALOUTPUT,config$PROJECT,'genome/bisbee',sep='/')
 
-Description<-read.table('Description.csv',header=TRUE,sep=';')
-th=1
-group='Neuropathy'
+group='Spladder'
 files<-list.files(path=spl_path,pattern='.txt$')
 print(length(files))
 i=1
-events<-c('alt_3_prime','alt_5_prime','exon_skip','intron_retention','mult_exon_skip','mutex_exons')
+events<-c('alt_3_prime','alt_5_prime','exon_skip','mult_exon_skip','mutex_exons')
 for (event in events)
   {
     name_main<-paste(group,'_',event,sep='')
+    # name2<-paste(group,'_',event,'_counts',sep='')
+    # name3<-paste(group,'_',event,'_common',sep='')
     file.to.load<-read.table(paste(spl_path,'/',files[i],sep=''),header=TRUE)
     g=1
     for (col_name in Description$Group)
       {
         coll<-grep(col_name,colnames(file.to.load))
         name_var<-paste(Description$Condition[g],'_',Description$Batch[g],'_',Description$Repetition[g],sep='')
-        colnames(file.to.load)<-sub(paste(col_name,"\\.",sep=''),name_var,colnames(file.to.load))
+        colnames(file.to.load)<-sub(paste(col_name,"\\.",sep=''),name_var,colnames(file.to.load))#replace Spladder names with Description names
         g=g+1
       }
     print(files[i])
-    assign(name_main,file.to.load)
-    i=i+1
-  }
+assign(name_main,file.to.load)
+i=i+1
+}
 
-path_bisbee<-params$bisbee_in_path
-setwd(path_bisbee)
-files2<-list.files(pattern='*effects.csv')
-files3<-list.files(pattern='*peptides.csv')
-names_files2<-c('alt_3_prime','alt_5_prime','exon_skip','intron_retention','mult_exon_skip','mutex_exons')
-for ( i in c(6))
+
+
+files2<-list.files(path=bb_path,pattern='*effects.csv')
+files3<-list.files(path=bb_path,pattern='*peptides.csv')
+for ( i in c(1:5))
 {
-  name<-paste(names_files2[i],'_bisbee',sep='')
-  file_read<-read.table(paste(path_bisbee,'/',files2[i],sep=''),header=TRUE,sep=',')
+  name<-paste(events[i],'_bisbee',sep='')
+  file_read<-read.table(paste(bb_path,'/',files2[i],sep=''),header=TRUE,sep=',')
   file_read$event_id<-sub('(_)(\\d+$)','\\.\\2',file_read$event_id)
 
 
-  namep<-paste(names_files2[i],'_bisbee_pep',sep='')
-  file_readp<-read.table(paste(path_bisbee,'/',files3[i],sep=''),header=TRUE,sep=',')
+  namep<-paste(events[i],'_bisbee_pep',sep='')
+  file_readp<-read.table(paste(bb_path,'/',files3[i],sep=''),header=TRUE,sep=',')
   file_readp$event_id<-sub('(_)(\\d+$)','\\.\\2',file_readp$event_id)
 
   file_read$refIso<-file_readp$refIsoform[match(file_read$event_id,file_readp$event_id)]
@@ -90,46 +88,56 @@ for ( i in c(6))
   assign(namep,file_readp)
 }
 
+
 #Divide into 3 groups: both new, new+old, only old
-PSI_NaO<-0.5
-th <-1
-for (event in events)
+PSI_NaO<-config$TH_PSI
+sd_th<-config$TH_STD
+res_NO<-matrix(nrow=9,ncol=5)
+res_NN<-matrix(nrow=9,ncol=5)
+res_OO<-matrix(nrow=9,ncol=5)
+
+i=1
+for (sdTH in sd_th)
 {
-  name_main<-paste('Neuropathy_',event,sep='')
+  j=1
+  for (event in c('alt_3_prime','alt_5_prime','exon_skip','mult_exon_skip','mutex_exons'))
+  {
+  name_main<-paste(group,'_',event,sep='')
   spladder_res<-get(name_main)
   name_bisbee<-paste(event,'_bisbee',sep='')
   bisbee_res<-get(name_bisbee)
   name_both_new<-paste(event,'_both_new',sep='')
   name_both_known<-paste(event,'_both_known',sep='')
   name_newAndOld<-paste(event,'_newAndOld',sep='')
-  bisbee_both_new<-bisbee_res[which(bisbee_res$coding_transcript_effect=='Unknown'),]
-  bisbee_both_known<-bisbee_res[which(bisbee_res$coding_transcript_effect=='IsoformSwitch'| bisbee_res$coding_transcript_effect=='NonCoding'),]
-  bisbee_newAndOld<-bisbee_res[which(bisbee_res$coding_transcript_effect=='NovelIso1'| bisbee_res$coding_transcript_effect=='NovelIso2'),]
+  #Both old- IsoformSwitch,NonCoding, Noncoding_Iso2, Noncoding_Iso1
+  #Both new Unknown Unknown_noncoding
+  # New and Old NovelIso2, NovelIso1, NovelIso2_NonCoding1, NovelIso1_NonCoding2
+  bisbee_both_new<-bisbee_res[which(bisbee_res$coding_transcript_effect=='Unknown' | bisbee_res$coding_transcript_effect=='Unknown_noncoding?'),]
+  
+  bisbee_both_known<-bisbee_res[which(bisbee_res$coding_transcript_effect=='IsoformSwitch'| bisbee_res$coding_transcript_effect=='NonCoding' | bisbee_res$coding_transcript_effect=='Noncoding_Iso1' | bisbee_res$coding_transcript_effect=='Noncoding_Iso2' ),]
+  
+  bisbee_newAndOld<-bisbee_res[which(bisbee_res$coding_transcript_effect=='NovelIso1'| bisbee_res$coding_transcript_effect=='NovelIso2' | bisbee_res$coding_transcript_effect=='NovelIso2_NonCoding1'| bisbee_res$coding_transcript_effect=='NovelIso1_NonCoding2'),]
   spladder_both_new<-spladder_res[spladder_res$event_id%in%bisbee_both_new$event_id,]
   spladder_both_known<-spladder_res[spladder_res$event_id%in%bisbee_both_known$event_id,]
   spladder_newAndOld<-spladder_res[spladder_res$event_id%in%bisbee_newAndOld$event_id,]
 
-  if (dim(spladder_both_known)[1]==0 || dim(spladder_both_new)[1]==0 || dim(spladder_newAndOld)[1]==0)
-  {
-    
-  }
-  else
-  {
   #assign effect type
-  spladder_both_new$effect_type<-'Unknown'
+  spladder_both_new$effect_type<-bisbee_both_new$coding_transcript_effect[match(spladder_both_new$event_id,bisbee_both_new$event_id)]
   spladder_newAndOld$effect_type<-bisbee_newAndOld$coding_transcript_effect[match(spladder_newAndOld$event_id,bisbee_newAndOld$event_id)]
   spladder_both_known$effect_type<-bisbee_both_known$coding_transcript_effect[match(spladder_both_known$event_id,bisbee_both_known$event_id)]
   #assign refIso
   spladder_both_new$refIso<-NaN
   spladder_newAndOld$refIso<-bisbee_newAndOld$refIso[match(spladder_newAndOld$event_id,bisbee_newAndOld$event_id)]
   spladder_both_known$refIso<-bisbee_both_known$refIso[match(spladder_both_known$event_id,bisbee_both_known$event_id)]
+  NA_val<-which(is.na(spladder_newAndOld$refIso))
+  spladder_newAndOld[NA_val,]$refIso<-spladder_newAndOld[NA_val,]$effect_type
   #Recalculate PSI according to event type
   spladder_newAndOld$PSI_flipped='No'
   #A=Iso1, refIso=Iso2
   if (event == 'mutex_exons')
   {
     indices<-grep('.psi',colnames(spladder_newAndOld))
-    for (h in c(1:dim(spladder_newAndOld[1])))
+    for (h in c(1:dim(spladder_newAndOld)[1]))
       {
         if (spladder_newAndOld[h,]$refIso=='iso1' || length(grep('Iso2',spladder_newAndOld[h,]$effect_type))==1)
           {
@@ -142,20 +150,24 @@ for (event in events)
   else
     {
       indices<-grep('.psi',colnames(spladder_newAndOld))
-      for (h in c(1:dim(spladder_newAndOld[1])))
+      for (h in c(1:dim(spladder_newAndOld)[1]))
         {
-          if (spladder_newAndOld[h,]$refIso=='iso2'|| length(grep('Iso1',spladder_newAndOld[h,]$effect_type))==1)
+        if (!is.na(spladder_newAndOld[h,]$refIso)){
+          if (spladder_newAndOld[h,]$refIso=='iso1'|| length(grep('Iso2',spladder_newAndOld[h,]$effect_type))==1)
             {
                spladder_newAndOld[h,indices]<-1-spladder_newAndOld[h,indices]
                spladder_newAndOld[h,]$PSI_flipped='Yes'
-            }
+          }
+        }
         }
     }
   #Calculate common part
-  #For New and Old = all4 reps>0.5
-  count_table<-matrix(0L,nrow=length(unique(spladder_newAndOld$gene_name)),ncol=length(unique(Description$Condition)))
+  count_table<-matrix(0L,nrow=length(unique(spladder_newAndOld$gene_name)),ncol=22)
   rownames(count_table)<-unique(spladder_newAndOld$gene_name)
-  colnames(count_table)<-unique(Description$Condition)
+  colnames(count_table)<-c('WTP_PNSL_1','WTP_SHAM_1','WTP_PNSL_2','WTP_SHAM_2','WTP_PNSL_3','WTP_SHAM_3',
+                           'CMV_PNSL_1','CMV_PNSL_2','CMV_PNSL_3','CMV_SHAM_1','CMV_SHAM_2','CMV_SHAM_3',
+                           'DLX_PNSL_1','DLX_PNSL_2','DLX_PNSL_3','DLX_SHAM_1','DLX_SHAM_2','DLX_SHAM_3',
+                           'NAV_PNSL_2','NAV_PNSL_3','NAV_SHAM_2','NAV_SHAM_3')
   indices<-grep('.psi',colnames(spladder_newAndOld))
   for (g  in c(1:dim(spladder_newAndOld)[1]))
   {
@@ -163,7 +175,7 @@ for (event in events)
     {
       more<-length(which(spladder_newAndOld[g,indices[grep(name,colnames(spladder_newAndOld)[indices])]]>PSI_NaO))
       sample_deviation<-sd(spladder_newAndOld[g,indices[grep(name,colnames(spladder_newAndOld)[indices])]],na.rm=TRUE)
-      if (more>=th && sample_deviation<0.1 && is.na(sample_deviation)!=TRUE)
+      if (more>=th && sample_deviation<sdTH && is.na(sample_deviation)!=TRUE) #more>=th &&<- threshold dla final filtration
       {
         spladder_newAndOld[g,name]<-'Yes'
         count_table[toString(spladder_newAndOld[g,'gene_name']),name]<-count_table[toString(spladder_newAndOld[g,'gene_name']),name]+1
@@ -172,30 +184,37 @@ for (event in events)
     }
   }
   #common- eventy występujące we wszystkich
-  Common_all<-apply(spladder_newAndOld[,(dim(spladder_newAndOld)[2]-length(unique(Description$Condition))-1):dim(spladder_newAndOld)[2]],1, function(x) sum(x=='Yes'))
-  print(length(which(Common_all==length(unique(Description$Condition)))))
-  File_common<-spladder_newAndOld[which(Common_all==length(unique(Description$Condition))),]
+  Common_all<-apply(spladder_newAndOld[,(dim(spladder_newAndOld)[2]-21):dim(spladder_newAndOld)[2]],1, function(x) sum(x=='Yes'))
+  print(length(which(Common_all==22)))
+  res_NO[i,j]<-length(which(Common_all==22))
+  File_common<-spladder_newAndOld[which(Common_all==22),]
   score<-apply(File_common[,indices],1,mean)
   File_common$Score<-round(score,2)
   File_common_sorted<-File_common[order(File_common$Score,decreasing=TRUE),]
   assign(paste(event,'_newAndOld_common',sep=''),File_common_sorted)
   assign(paste(event,'_newAndOld_count_table',sep=''),count_table)
+  #For Unknown and both known = 0.2< all4reps <0.8
   rm(File_common_sorted,count_table)
   names_NN_KK<-c(name_both_new,name_both_known)
   kk<-1
   for (file_to_calc_common in c('spladder_both_new','spladder_both_known'))
   {
     data_to_calc<-get(paste(file_to_calc_common))
-    count_table<-matrix(0L,nrow=length(unique(data_to_calc$gene_name)),ncol=length(unique(Description$Condition)))
+    count_table<-matrix(0L,nrow=length(unique(data_to_calc$gene_name)),ncol=22)
     rownames(count_table)<-unique(data_to_calc$gene_name)
-    colnames(count_table)<-unique(Description$Condition)
+    colnames(count_table)<-c('WTP_PNSL_1','WTP_SHAM_1','WTP_PNSL_2','WTP_SHAM_2','WTP_PNSL_3','WTP_SHAM_3',
+                           'CMV_PNSL_1','CMV_PNSL_2','CMV_PNSL_3','CMV_SHAM_1','CMV_SHAM_2','CMV_SHAM_3',
+                           'DLX_PNSL_1','DLX_PNSL_2','DLX_PNSL_3','DLX_SHAM_1','DLX_SHAM_2','DLX_SHAM_3',
+                           'NAV_PNSL_2','NAV_PNSL_3','NAV_SHAM_2','NAV_SHAM_3')
     indices<-grep('.psi',colnames(data_to_calc))
     for (g  in c(1:dim(data_to_calc)[1]))
     {
       for (name in colnames(count_table))
       {
+        # more<-length(which(data_to_calc[g,indices[grep(name,colnames(data_to_calc)[indices])]]>PSI_L &
+        #                    data_to_calc[g,indices[grep(name,colnames(data_to_calc)[indices])]]<PSI_H))
         sample_deviation<-sd(data_to_calc[g,indices[grep(name,colnames(data_to_calc)[indices])]],na.rm=TRUE)
-        if (sample_deviation<0.1 && is.na(sample_deviation)!=TRUE)
+        if (sample_deviation<sdTH && is.na(sample_deviation)!=TRUE) #more>=th && 
         {
           data_to_calc[g,name]<-'Yes'
           count_table[toString(data_to_calc[g,'gene_name']),name]<-count_table[toString(data_to_calc[g,'gene_name']),name]+1
@@ -204,9 +223,14 @@ for (event in events)
       }
     }
   #common- eventy występujące we wszystkich
-    Common_all<-apply(data_to_calc[,(dim(data_to_calc)[2]-(length(unique(Description$Condition))-1)):dim(data_to_calc)[2]],1, function(x) sum(x=='Yes'))
-    print(length(which(Common_all==length(unique(Description$Condition)))))
-    File_common<-data_to_calc[which(Common_all==length(unique(Description$Condition))),]
+    Common_all<-apply(data_to_calc[,(dim(data_to_calc)[2]-21):dim(data_to_calc)[2]],1, function(x) sum(x=='Yes'))
+    print(length(which(Common_all==22)))
+    if(kk==1)
+    {
+      res_NN[i,j]<-length(which(Common_all==22))
+    }
+    else res_OO[i,j]<-length(which(Common_all==22))
+    File_common<-data_to_calc[which(Common_all==22),]
     score<-apply(File_common[,indices],1,mean)
     File_common$Score<-round(score,2)
     File_common_sorted<-File_common[order(File_common$Score,decreasing=TRUE),]
@@ -215,12 +239,41 @@ for (event in events)
     assign(paste(names_NN_KK[kk]),data_to_calc)
     kk=kk+1
   }
-  
-  }
-
   assign(name_newAndOld,spladder_newAndOld)
+  
+  j=j+1
 }
-save(file=paste(params$outpath,'/Common.RData',sep=''),list=ls(pattern="*_common$"))
+  i=i+1
+}
+events<-c('alt_3_prime','alt_5_prime','exon_skip','mult_exon_skip','mutex_exons')
+plot(sd_th,res_NO[,1],type='l',ylim=c(0,5000),col='red',xlab='Sd threshold',ylab='Events detected',main='New and known')
+colls<-c('blue','black','cyan','yellow')
+j=1
+for (i in c(2:5))
+{
+  lines(sd_th,res_NO[,i],col=colls[j])
+  j=j+1
+}
+legend(0.4,4500,events,fill=c('red',colls),cex=0.7)
+j=1
+plot(sd_th,res_NN[,1],type='l',ylim=c(0,750),col='red',xlab='Sd threshold',ylab='Events detected', main='Both new')
+for (i in c(2:5))
+{
+  lines(sd_th,res_NN[,i],col=colls[j])
+  j=j+1
+}
+legend(0.1,750,events,fill=c('red',colls),cex=0.7)
+j=1
+plot(sd_th,res_OO[,1],type='l',ylim=c(0,2000),col='red',xlab='Sd threshold',ylab='Events detected',main='Both known')
+for (i in c(2:5))
+{
+  lines(sd_th,res_OO[,i],col=colls[j])
+  j=j+1
+}
+legend(0.1,2000,events,fill=c('red',colls),cex=0.7)
+
+setwd('/Users/agatamuszynska/Documents/Work/Neuropathy_all_GRcM39/Results_no_PSI_th')
+save.image('Final_both_thresholds_grudzien.RData')
 ```
 
 # Section 1 
@@ -228,592 +281,44 @@ save(file=paste(params$outpath,'/Common.RData',sep=''),list=ls(pattern="*_common
 - New/Old PSI>0.5 and sd <0.1
 - New/new $ old/old sd<0.1
 
+
 ```{r,warning=FALSE,message=FALSE,fig.align='left'}
+BK<-c(dim(alt_3_prime_both_known)[1],dim(alt_5_prime_both_known)[1],dim(exon_skip_both_known)[1],dim(mutex_exons_both_known)[1],dim(mult_exon_skip_both_known)[1])
+BK_c<-c(dim(alt_3_prime_both_known_common)[1],dim(alt_5_prime_both_known_common)[1],dim(exon_skip_both_known_common)[1],dim(mutex_exons_both_known_common)[1],dim(mult_exon_skip_both_known_common)[1])
+BK_per<-BK_c/BK*100
 
-ltNO=list('alt_5_prime'=as.character(unique(alt_5_prime_newAndOld_common$gene_name)),
-                   'exon_skip'=as.character(unique(exon_skip_newAndOld_common$gene_name)),
-                  'mult_exon_skip'=as.character(unique(mult_exon_skip_newAndOld_common$gene_name)),
-                   'mutex_exons'=as.character(unique(mutex_exons_newAndOld_common$gene_name)))
+BN<-c(dim(alt_3_prime_both_new)[1],dim(alt_5_prime_both_new)[1],dim(exon_skip_both_new)[1],dim(mutex_exons_both_new)[1],dim(mult_exon_skip_both_new)[1])
+BN_c<-c(dim(alt_3_prime_both_new_common)[1],dim(alt_5_prime_both_new_common)[1],dim(exon_skip_both_new_common)[1],dim(mutex_exons_both_new_common)[1],dim(mult_exon_skip_both_new_common)[1])
+BN_per<-BN_c/BN*100
 
-upset(fromList(ltNO))
-grid.text("Overlap for genes containing common ASE for new+old",x = 0.65, y=0.95, gp=gpar(fontsize=10))
+NaO<-c(dim(alt_3_prime_newAndOld)[1],dim(alt_5_prime_newAndOld)[1],dim(exon_skip_newAndOld)[1],dim(mutex_exons_newAndOld)[1],dim(mult_exon_skip_newAndOld)[1])
+NaO_c<-c(dim(alt_3_prime_newAndOld_common)[1],dim(alt_5_prime_newAndOld_common)[1],dim(exon_skip_newAndOld_common)[1],dim(mutex_exons_newAndOld_common)[1],dim(mult_exon_skip_newAndOld_common)[1])
+NaO_per<-NaO_c/NaO*100
+total<-BK+BN+NaO
+tab_all<-cbind(BK,BK_c,round(BK_per,digits=2),BN,BN_c,round(BN_per,digits=2),NaO,NaO_c,round(NaO_per,digits=2),total)
+colnames(tab_all)<-c('both iso known','both iso known_common','Percentage','both iso new','both iso new common','Percentage','new and old','new and old common','Percentage','Total')
 
-ltBK=list('alt_5_prime'=as.character(unique(alt_5_prime_both_known_common$gene_name)),
-                   'exon_skip'=as.character(unique(exon_skip_both_known_common$gene_name)),
-                  'mult_exon_skip'=as.character(unique(mult_exon_skip_both_known_common$gene_name)),
-                   'mutex_exons'=as.character(unique(mutex_exons_both_known_common$gene_name)))
-
-upset(fromList(ltBK))
-grid.text("Overlap for genes containing common ASE for old+old",x = 0.65, y=0.95, gp=gpar(fontsize=10))
-
-ltBN=list('alt_5_prime'=as.character(unique(alt_5_prime_both_new_common$gene_name)),
-                   'exon_skip'=as.character(unique(exon_skip_both_new_common$gene_name)),
-                  'mult_exon_skip'=as.character(unique(mult_exon_skip_both_new_common$gene_name)),
-                   'mutex_exons'=as.character(unique(mutex_exons_both_new_common$gene_name)))
-
-upset(fromList(ltBN))
-grid.text("Overlap for genes containing common ASE for new+new",x = 0.65, y=0.95, gp=gpar(fontsize=10))
-
-intersect(alt_5_prime_both_new_common$gene_name,intersect(exon_skip_both_new_common$gene_name,intersect(mult_exon_skip_both_new_common$gene_name,mutex_exons_both_new_common$gene_name)))
-intersect(alt_5_prime_both_known_common$gene_name,intersect(exon_skip_both_known_common$gene_name,intersect(mult_exon_skip_both_known_common$gene_name,mutex_exons_both_known_common$gene_name)))
-```
-
-# Section 2
-##Results for new and old group
-```{r,warning=FALSE,message=FALSE,fig.align='left'}
-BK<-c(dim(alt_5_prime_both_known)[1],dim(exon_skip_both_known)[1],dim(mutex_exons_both_known)[1],dim(mult_exon_skip_both_known)[1])
-BK_c<-c(dim(alt_5_prime_both_known_common)[1],dim(exon_skip_both_known_common)[1],dim(mutex_exons_both_known_common)[1],dim(mult_exon_skip_both_known_common)[1])
-BN<-c(dim(alt_5_prime_both_new)[1],dim(exon_skip_both_new)[1],dim(mutex_exons_both_new)[1],dim(mult_exon_skip_both_new)[1])
-BN_c<-c(dim(alt_5_prime_both_new_common)[1],dim(exon_skip_both_new_common)[1],dim(mutex_exons_both_new_common)[1],dim(mult_exon_skip_both_new_common)[1])
-NaO<-c(dim(alt_5_prime_newAndOld)[1],dim(exon_skip_newAndOld)[1],dim(mutex_exons_newAndOld)[1],dim(mult_exon_skip_newAndOld)[1])
-NaO_c<-c(dim(alt_5_prime_newAndOld_common)[1],dim(exon_skip_newAndOld_common)[1],dim(mutex_exons_newAndOld_common)[1],dim(mult_exon_skip_newAndOld_common)[1])
-tab_all<-cbind(BK,BK_c,BN,BN_c,NaO,NaO_c)
-colnames(tab_all)<-c('both iso known','both iso known_common','both iso new','both iso new common','new and old','new and old common')
-rownames(tab_all)<-events ## CHECK KOLEJNOŚĆ
+rownames(tab_all)<-c('Alt_3_prime','Alt_5_prime','exon_skip','mutex_exons','mult_exon_skip')
 kable(tab_all)
-```
-
-## 2.1 Number of genes for common events
-
-```{r,warning=FALSE,message=FALSE,fig.align='left'}
-
-tab_no_genes<-as.matrix(c(length(unique(Neuropathy_alt_5_prime_common$gene_name)),
-                 length(unique(Neuropathy_exon_skip_common$gene_name)),
-                 length(unique(Neuropathy_mult_exon_skip_common$gene_name)),
-                 length(unique(Neuropathy_mutex_exons_common$gene_name))))
-rownames(tab_no_genes)<-c('Alt_5_prime','exon_skip','mult_exon_skip','mutex_exons')
-colnames(tab_no_genes)<-'Number'
-kable(tab_no_genes)
-```
-```{r,warning=FALSE,message=FALSE,fig.align='left',include=FALSE}
-
-futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
-
-ven<-venn.diagram(x=list('alt_5_prime'=unique(Neuropathy_alt_5_prime_common$gene_name),
-                   'exon_skip'=unique(Neuropathy_exon_skip_common$gene_name),
-                  'mult_exon_skip'=unique(Neuropathy_mult_exon_skip_common$gene_name),
-                   'mutex_exons'=unique(Neuropathy_mutex_exons_common$gene_name)),
-                      main= 'Venn diagram  for common genes with nASE',
-                      filename=NULL,
-                      fill =c("yellow","lightgreen",
-                              "mediumorchid",'cyan'),output=TRUE,imagetype='png') 
-```
-```{r,warning=FALSE,message=FALSE,fig.align='left'}
-render.venn.diagram(ven)
-intersect(intersect(intersect(unique(Neuropathy_alt_5_prime_common$gene_name),unique(Neuropathy_exon_skip_common$gene_name)),unique(Neuropathy_mult_exon_skip_common$gene_name)),unique(Neuropathy_mutex_exons_common$gene_name))
-```
-
-
-\newpage
-## 2.2 Barplots and heatmaps for variance
-```{r,warning=FALSE,message=FALSE,fig.align='left'}
-#barplots for stability
-library(matrixStats)
-library(gplots)
-tab_no_events<-tab_all[,c(2,4,6)]
-pl_l<-c(80,150,80,40)
-#pl_y<-c(2000,5000,500,100)
-pl_y<-c(1500,4000,400)
-vec_to_legend<-c(750,2000,200)
-ev_gr<-c('old+old','new+new','new+old')
-k=1
-for (event_group in c('both_known','both_new','newAndOld'))
-{
-  i=1
-  for (event in c('alt_5_prime','exon_skip','mult_exon_skip'))#,'mutex_exons'))
-  {
-    name_main<-paste(event,'_',event_group,sep='')
-    data<-get(name_main)
-    pr_type<-c('WTP_PNSL_1','WTP_SHAM_1','WTP_PNSL_2','WTP_SHAM_2','WTP_PNSL_3','WTP_SHAM_3',
-              'CMV_PNSL_1','CMV_PNSL_2','CMV_PNSL_3','CMV_SHAM_1','CMV_SHAM_2','CMV_SHAM_3',
-              'DLX_PNSL_1','DLX_PNSL_2','DLX_PNSL_3','DLX_SHAM_1','DLX_SHAM_2','DLX_SHAM_3',
-              'NAV_PNSL_2','NAV_PNSL_3','NAV_SHAM_2','NAV_SHAM_3')
-    data_barplot<--matrix(0L,nrow=2,ncol=22)
-    rownames(data_barplot)<-c('Intersection','Union')
-    colnames(data_barplot)<-pr_type
-    data_hist<-matrix(0L,nrow=20,ncol=22)
-    colnames(data_hist)<-pr_type
-    #plot(0,0,type='n',xlim=c(-0.01,0.4),ylim=c(0,pl_l[i]),main=paste('Variance distribution for ',event,sep=''))
-    for (probe_type in pr_type)
-    {
-      Psi_cols<-colnames(data)[grep(paste(probe_type,'.+psi',sep=''),colnames(data))]
-      data[is.na(data)]<-0
-      data2<-data[-which(rowSums(data[,Psi_cols])==0),]
-      data_barplot['Intersection',probe_type]<-sum(data2[,probe_type]=='Yes')
-      data_barplot['Union',probe_type]<-dim(data2)[1]-data_barplot['Intersection',probe_type]
-      cols_to_calc_var<-data2[,grep(paste(probe_type,'_[1-4]sort.psi',sep=''),colnames(data2))]
-      variance<-rowVars(as.matrix(cols_to_calc_var))
-      m<-rowMeans2(as.matrix(cols_to_calc_var))
-      d<-density(variance)
-      h<-hist(variance,breaks =20,plot=FALSE)
-      data_hist[c(1:length(h$density)),probe_type]<-h$counts
-      #lines(d)
-      #plot(m,variance,xlab='Mean PSI',ylab='Variance')
-    }
-   rownames(data_hist)<-c('0.00:0.02','0.02:0.04','0.04:0.06','0.06:0.08','0.08:0.10',
-                          '0.10:0.12','0.12:0.14','0.14:0.16','0.16:0.18','0.18:0.20',
-                          '0.20:0.22','0.22:0.24','0.24:0.26','0.26:0.28','0.28:0.30',
-                          '0.30:0.32','0.32:0.34','0.34:0.36','0.36:0.38','0.38:0.40')
-    i_med<- median(data_barplot['Intersection',])
-    u_med<- median(data_barplot['Intersection',]+data_barplot['Union',])
-    heatmap(log(data_hist[1:17,]+0.001),
-              scale="column",
-              #key=TRUE,
-              hclustfun=function(x) hclust(x,method="median"),
-              distfun=function(x) dist(x,method='manhattan'),
-              #trace="none",
-              Colv=NA, Rowv=NA,
-              keep.dendro = TRUE,
-              #dendrogram="none",
-              #density="none",
-              cexCol=0.6,cexRow = 0.6,main=paste("Heatmap for all events for",event,ev_gr[k],sep=' '))
-    
-    par(mar=c(5.1, 4.1, 4.1, 8.1),xpd=FALSE)
-    barplot(data_barplot,ylim=c(0,length(unique(data$event_id))+0.2*length(unique(data$event_id))),main=paste("Barplot for",event,ev_gr[i],'group',sep=' '), col=c("black","grey"),
-    las=2,cex.names=0.7) 
-    abline( h = i_med, col = "red")
-    abline( h = u_med, col = "blue")
-    abline(h=tab_no_events[i,k],col="green")
-    abline(h=length(unique(data$event_id)),col='black')
-    par(xpd=TRUE)
-    legend(28,vec_to_legend[i],c(rownames(data_barplot),'Intersection median','Union median','Common','All events'),col=c("black","grey",'red','blue','green','black'),lty = c(NA,NA,1,1,1,1),pch=c(15,15,NA,NA,NA,NA),bg='white',cex = 0.75)
-    print(length(unique(data$event_id)))
-    i=i+1
-  }
-  k=k+1
-}
-
-
-```
-\newpage
-
-```{r,warning=FALSE,message=FALSE,fig.align='left'}
-#barplots for stability
-library(matrixStats)
-library(gplots)
-pl_l<-c(80,150,80,40)
-k=1
-for (event_group in c('both_known','both_new','newAndOld'))
-{
-  i=1
-  for (event in c('alt_5_prime','exon_skip','mult_exon_skip'))#,'mutex_exons'))
-  {
-    name_main<-paste(event,'_',event_group,sep='')
-  data<-get(name_main)
-  pr_type<-c('WTP_PNSL_1','WTP_SHAM_1','WTP_PNSL_2','WTP_SHAM_2','WTP_PNSL_3','WTP_SHAM_3',
-             'CMV_PNSL_1','CMV_PNSL_2','CMV_PNSL_3','CMV_SHAM_1','CMV_SHAM_2','CMV_SHAM_3',
-             'DLX_PNSL_1','DLX_PNSL_2','DLX_PNSL_3','DLX_SHAM_1','DLX_SHAM_2','DLX_SHAM_3',
-             'NAV_PNSL_2','NAV_PNSL_3','NAV_SHAM_2','NAV_SHAM_3')
-
-  data_hist<-matrix(0L,nrow=20,ncol=22)
-  colnames(data_hist)<-pr_type
-  for (probe_type in pr_type)
-  {
-    data_new<-data[data[paste(probe_type)]=='Yes',]
-    Psi_cols<-colnames(data_new)[grep(paste(probe_type,'.+psi',sep=''),colnames(data_new))]
-    data_new[is.na(data_new)]<-0
-    #data2<-data_new[-which(rowSums(data_new[,Psi_cols])==0),]
-    cols_to_calc_var<-data_new[,grep(paste(probe_type,'_[1-4]sort.psi',sep=''),colnames(data_new))]
-    variance<-rowVars(as.matrix(cols_to_calc_var))
-    m<-rowMeans2(as.matrix(cols_to_calc_var))
-    d<-density(variance)
-    h<-hist(variance,breaks=seq(0,0.4,l=20),plot=FALSE)
-    data_hist[c(1:length(h$density)),probe_type]<-h$counts
-    #lines(d)
-    #plot(m,variance,xlab='Mean PSI',ylab='Variance',title=paste("Scatterplot for events with  PSI>0.5 for",event,probe_type,sep=' '))
-
-  }
-  rownames(data_hist)<-c('0.00:0.02','0.02:0.04','0.04:0.06','0.06:0.08','0.08:0.10',
-                          '0.10:0.12','0.12:0.14','0.14:0.16','0.16:0.18','0.18:0.20',
-                          '0.20:0.22','0.22:0.24','0.24:0.26','0.26:0.28','0.28:0.30',
-                          '0.30:0.32','0.32:0.34','0.34:0.36','0.36:0.38','0.38:0.40')
-  heatmap(log(data_hist[1:17,]+0.001),
-            scale="column",
-            #key=TRUE,
-            hclustfun=function(x) hclust(x,method="median"),
-            distfun=function(x) dist(x,method='manhattan'),
-            #trace="none",
-          Colv=NA, Rowv=NA,
-          keep.dendro = TRUE,
-            #dendrogram="none",
-            #density="none",
-            cexCol=0.6,cexRow = 0.6,cex.main=0.9,main=paste("Heatmap for events with PSI>0.5 for ",event,sep=''))
-    i=i+1
-}
-}
-
-```
-
-\newpage
-
-##2.4 TopGO results
-```{r,warning=FALSE,message=FALSE,fig.align='left'}
-library(topGO)
-library(GOfuncR) 
-library(annotate)
-th_GO<-0.05
-
-for (event in c('alt_5_prime','exon_skip','mult_exon_skip'))#,'mutex_exons'))
-{
-name_main<-paste(event,'_newAndOld',sep='')
-data<-get(name_main)
-name_common<-paste(event,'_newAndOld_common',sep='')
-data_common<-get(name_common)
-geneList<-data$gene_name
-geneList2 <- factor(as.integer(data$gene_name %in% data_common$gene_name))
-SYM_MM<-data_common$gene_name_proper
-names(geneList2)<-data$gene_name
-i=1
-for (method in c('CC','MF','BP'))
-{
-  GOdata <- new("topGOdata", ontology = method, allGenes = geneList2,
-              annot = annFUN.org,mapping='org.Mm.eg.db',
-              ID='ensembl')
-test.stat <- new("parentChild", testStatistic = GOFisherTest, name = "Fisher test")
-resultFisher <- getSigGroups(GOdata, test.stat)
-used<-usedGO(GOdata)
-allRes <-  GenTable(GOdata , parentchildFisher=resultFisher,topNodes = length(used),numChar=1000)
-print(length(which(allRes$parentchildFisher<0.05)))
-
-p.val.FP <- score(resultFisher)
-lnames <- names(p.val.FP)[p.val.FP < 0.05]
-lgenes <- get_anno_genes(lnames, database = 'org.Mm.eg.db',genes=SYM_MM)
-
-#print(length(which(allRes$parentchildFisher<0.01)))
-#assign(name.main,allRes)
-allRes<-allRes[which(as.numeric(allRes$parentchildFisher)<th_GO),]
-p.val.FP <- score(resultFisher)
-lnames <- names(p.val.FP)[p.val.FP < 0.05]
-lgenes <- get_anno_genes(lnames, database = 'Mus.musculus',genes=data_common$gene_name_proper)
-if (dim(allRes)[1]<10){b=dim(allRes)[1]}
-
-else {b=10}
-if (b!=0)
-{
-for (j in c(1:b))
-{
-  if (allRes[j,]$parentchildFisher=="< 1e-30")
-  {
-    allRes[j,]$parentchildFisher=1e-30
-  }
-}
-  
-for  (j in c(1:dim(allRes)[1]))
-{
-  genes<-paste(lgenes[which(lgenes$go_id==allRes[j,]$GO.ID),]$gene,collapse=', ')
-  allRes$genes[j]<-genes
-
-}
-names_BP<-allRes$Term[b:1]
-par(mai=c(1,3,1,1))
-barplot(abs(log(as.numeric(allRes[b:1,]$parentchildFisher))),main=paste('Top',b,method,'for',name_main,sep=' '),horiz=TRUE,names.arg = names_BP,xlim=c(0,50),las=1,col='darkblue',cex.names = 0.7,xlab="abs(log(p-value))")
-name_out<-paste(name_main,method,sep='_')
-assign(name_out,allRes)
-i=i+1
-setwd('/Users/agatamuszynska/Work/Dell_work/Neuropathy_all_GRcM39/Results_PSI_flipped')
-colnames(allRes)[6]<-'p-value'
-#write.csv(allRes[,c(1,2,6,7)],paste(name_main,'_',th_GO,'_',method,'.csv',sep=''))
-kable(allRes[,c(1,2,6)],caption=paste(name_main,th_GO,method,sep=' '))
-}
-}
-}
-
-#setwd('/Users/agatamuszynska/Work/Spladder_neuro/Neuropathy_all/Results_for_article')
-#save.image('Data_to_article.RData')
-
-```
-
-##2.4 Plots for common topGO terms
-```{r,warning=FALSE,message=FALSE,fig.align='left'}
-pl_count<-1
-names_plot<-c('Cellular Component','Molecular Function','Biological Process')
-  for (method in c('CC','MF','BP'))
-  {
-    name_in_alt<-paste('alt_5_prime_newAndOld_',method,sep='')
-    name_in_mult<-paste('mult_exon_skip_newAndOld_',method,sep='')
-    name_in_es<-paste('exon_skip_newAndOld_',method,sep='')
-
-    data_alt<-get(name_in_alt)
-    data_mult<-get(name_in_mult)
-    data_es<-get(name_in_es)
-    
-    ##ALT+ES
-    minno<-min(100,min(dim(data_alt)[1],dim(data_es)[1]))
-    vec<-seq(10,minno,10)
-    percentage<-c()
-    for (i in vec)
-    {
-      percentage<-cbind(percentage,length(intersect(data_alt$GO.ID[1:i],data_es$GO.ID[1:i]))/length(unique(data_alt$GO.ID[1:i],data_es$GO.ID[1:i])))
-    #print(percentage)
-    if (minno-i>0 & minno-i<10)
-    {
-      alt_idx<-min(minno,dim(data_alt)[1])
-      es_idx<-min(minno,dim(data_es)[1])
-
-     percentage<-cbind(percentage,length(intersect(data_alt$GO.ID[1:alt_idx],data_es$GO.ID[1:es_idx]))/length(unique(data_alt$GO.ID[1:alt_idx],data_es$GO.ID[1:es_idx])))
-     #print(percentage)
-      vec<-c(vec,minno)
-
-    }
-
-    }
-    plot(vec,percentage,type='l',ylim=c(0,1),main=names_plot[pl_count],xlab='Interval',ylab='Percentage')
-    ## Alt+MULT
-    minno<-min(100,min(dim(data_alt)[1],dim(data_mult)[1]))
-    vec<-seq(10,minno,10)
-    percentage<-c()
-    for (i in vec)
-    {
-      percentage<-cbind(percentage,length(intersect(data_alt$GO.ID[1:i],data_mult$GO.ID[1:i]))/length(unique(data_alt$GO.ID[1:i],data_mult$GO.ID[1:i])))
-      #print(percentage)
-    if (minno-i>0  & minno-i<10)
-    {
-      alt_idx<-min(minno,dim(data_alt)[1])
-      mult_idx<-min(minno,dim(data_mult)[1])
-
-     percentage<-cbind(percentage,length(intersect(data_alt$GO.ID[1:alt_idx],data_mult$GO.ID[1:mult_idx]))/length(unique(data_alt$GO.ID[1:alt_idx],data_mult$GO.ID[1:mult_idx])))
-     #print(percentage)
-     vec<-c(vec,minno)
-    }
-    }
-    lines(vec,percentage,col='red')
-
-    ##ES+MULT
-    minno<-min(100,min(dim(data_es)[1],dim(data_mult)[1]))
-    vec<-seq(10,minno,10)
-    percentage<-c()
-    for (i in vec)
-    {
-      percentage<-cbind(percentage,length(intersect(data_mult$GO.ID[1:i],data_es$GO.ID[1:i]))/length(unique(data_mult$GO.ID[1:i],data_es$GO.ID[1:i])))
-      #print(percentage)
-    if (minno-i>0  & minno-i<10)
-    {
-      mult_idx<-min(minno,dim(data_mult)[1])
-      es_idx<-min(minno,dim(data_es)[1])
-
-     percentage<-cbind(percentage,length(intersect(data_mult$GO.ID[1:mult_idx],data_es$GO.ID[1:es_idx]))/length(unique(data_mult$GO.ID[1:mult_idx],data_es$GO.ID[1:es_idx])))
-     #print(percentage)
-     vec<-c(vec,minno)
-     
-
-    }
-    
-    }
-   lines(vec,percentage,col='blue')
-  legend('topright',c('alt 5 prime + exon skip','alt 5 prime + multiple exons skip','exon skip + multiple exons skip'),col=c('black','red','blue'),lty=1)
-    pl_count<-pl_count+1
-    
-  }
-
-```
-## Venn diagrams for p-value < 0.05
-
-```{r,warning=FALSE,message=FALSE,fig.align='left',include=FALSE}
-
-futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
-
-ven<-venn.diagram(x=list('alt_5_prime'=alt_5_prime_newAndOld_BP$GO.ID,
-                   'exon_skip'=exon_skip_newAndOld_BP$GO.ID,
-                  'mult_exon_skip'=mult_exon_skip_newAndOld_BP$GO.ID),
-                   #'mutex_exons'=Neuropathy_mutex_exons_BP$GO.ID,
-                      main= 'Venn diagram  for common Biological Processes',
-                      filename=NULL,
-                      fill =c("yellow","lightgreen",
-                              "mediumorchid"),output=TRUE,imagetype='png') 
-```
-```{r,warning=FALSE,message=FALSE,fig.align='left'}
-render.venn.diagram(ven)
-intersect(exon_skip_newAndOld_BP$Term,intersect(mult_exon_skip_newAndOld_BP$Term,alt_5_prime_newAndOld_BP$Term))
-```
-```{r,warning=FALSE,message=FALSE,fig.align='left',include=FALSE}
-
-futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
-
-ven<-venn.diagram(x=list('alt_5_prime'=alt_5_prime_newAndOld_MF$GO.ID,
-                   'exon_skip'=exon_skip_newAndOld_MF$GO.ID,
-                  'mult_exon_skip'=mult_exon_skip_newAndOld_MF$GO.ID),
-                   #'mutex_exons'=Neuropathy_mutex_exons_MF$GO.ID),
-                      main= 'Venn diagram  for common Molecular Functions',
-                      filename=NULL,
-                      fill =c("yellow","lightgreen",
-                              "mediumorchid"),output=TRUE,imagetype='png') 
-```
-```{r,warning=FALSE,message=FALSE,fig.align='left'}
-render.venn.diagram(ven)
-intersect(exon_skip_newAndOld_MF$Term,intersect(mult_exon_skip_newAndOld_MF$Term,alt_5_prime_newAndOld_MF$Term))
-```
-```{r,warning=FALSE,message=FALSE,fig.align='left',include=FALSE}
-
-futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
-
-ven<-venn.diagram(x=list('alt_5_prime'=alt_5_prime_newAndOld_CC$GO.ID,
-                   'exon_skip'=exon_skip_newAndOld_CC$GO.ID,
-                  'mult_exon_skip'=mult_exon_skip_newAndOld_CC$GO.ID),
-                   #'mutex_exons'=Neuropathy_mutex_exons_CC$GO.ID),
-                      main= 'Venn diagram  for common Cellular Components',
-                      filename=NULL,
-                      fill =c("yellow","lightgreen",
-                              "mediumorchid"),output=TRUE,imagetype='png') 
+#write.csv(tab_all,"/home/agata/Documents/Work/Dell_work/Neuropathy_all_GRcM39/Tab_all.csv")
+count_na <- rowSums(is.na(exon_skip_newAndOld_common))
 
 ```
 ```{r,warning=FALSE,message=FALSE,fig.align='left'}
-render.venn.diagram(ven)
-intersect(exon_skip_newAndOld_CC$Term,intersect(mult_exon_skip_newAndOld_CC$Term,alt_5_prime_newAndOld_CC$Term))
-```
-
-## Upset plots
-```{r,warning=FALSE,message=FALSE,fig.align='left'}
-
-BP_NO<-list('alt_5_prime'=alt_5_prime_newAndOld_BP$GO.ID,
-                   'exon_skip'=exon_skip_newAndOld_BP$GO.ID,
-                  'mult_exon_skip'=mult_exon_skip_newAndOld_BP$GO.ID)
-upset(fromList(BP_NO))
-grid.text("BP overlap for new+old group",x = 0.65, y=0.95, gp=gpar(fontsize=10))
-
-CC_NO<-list('alt_5_prime'=alt_5_prime_newAndOld_CC$GO.ID,
-                   'exon_skip'=exon_skip_newAndOld_CC$GO.ID,
-                  'mult_exon_skip'=mult_exon_skip_newAndOld_CC$GO.ID)
-upset(fromList(CC_NO))
-grid.text("CC overlap for new+old group",x = 0.65, y=0.95, gp=gpar(fontsize=10))
-
-MF_NO<-list('alt_5_prime'=alt_5_prime_newAndOld_MF$GO.ID,
-                   'exon_skip'=exon_skip_newAndOld_MF$GO.ID,
-                  'mult_exon_skip'=mult_exon_skip_newAndOld_MF$GO.ID)
-upset(fromList(MF_NO))
-grid.text("MF overlap for new+old group",x = 0.65, y=0.95, gp=gpar(fontsize=10))
-```
-\newpage
-
-#Results for new/new and old/old groups
-
-```{r,warning=FALSE,message=FALSE,fig.align='left'}
-th_GO<-0.05
-gtf.file<-"/Users/agatamuszynska/Work/Dell_work/bisbee/Mus_musculus.GRCm39.104.gtf"
-gtf.gr<-rtracklayer::import(gtf.file) # creates a GRanges object
-gtf.df = as.data.frame(gtf.gr)
-genes_GTF = unique(gtf.df[ ,"gene_id"])
-
-
-for (event in c('alt_5_prime','exon_skip','mult_exon_skip','mutex_exons'))
-{
-  for (type in c('both_new','both_known'))
-  {
-    name_main<-paste(event,'_',type,'_common',sep='')
-    data<-get(name_main)
-    geneList<-genes_GTF
-    geneList2 <- factor(as.integer(geneList %in% data$gene_name))
-    SYM_MM<-data$gene_name_proper
-    names(geneList2)<-geneList
-    i=1
-    for (method in c('CC','MF','BP'))
-    {
-      GOdata <- new("topGOdata", ontology = method, allGenes = geneList2,
-                annot = annFUN.org,mapping='org.Mm.eg.db',
-                ID='ensembl')
-      test.stat <- new("parentChild", testStatistic = GOFisherTest, name = "Fisher test")
-      resultFisher <- getSigGroups(GOdata, test.stat)
-      used<-usedGO(GOdata)
-      allRes <-  GenTable(GOdata , parentchildFisher=resultFisher,topNodes = length(used),numChar=1000)
-      print(length(which(allRes$parentchildFisher<0.05)))
-      
-      p.val.FP <- score(resultFisher)
-      lnames <- names(p.val.FP)[p.val.FP < 0.05]
-      lgenes <- get_anno_genes(lnames, database = 'org.Mm.eg.db',genes=SYM_MM)
-
-      #print(length(which(allRes$parentchildFisher<0.01)))
-      #assign(name.main,allRes)
-      allRes<-allRes[which(as.numeric(allRes$parentchildFisher)<th_GO),]
-      p.val.FP <- score(resultFisher)
-      lnames <- names(p.val.FP)[p.val.FP < 0.05]
-      lgenes <- get_anno_genes(lnames, database = 'Mus.musculus',genes=data$gene_name_proper)
-      if (dim(allRes)[1]<10){b=dim(allRes)[1]}
-      else {b=10}
-      if (b!=0)
-      {
-      for (j in c(1:b))
-      {
-        if (allRes[j,]$parentchildFisher=="< 1e-30")
-        {
-          allRes[j,]$parentchildFisher=1e-30
-        }
-      }
-        
-      for  (j in c(1:dim(allRes)[1]))
-      {
-        genes<-paste(lgenes[which(lgenes$go_id==allRes[j,]$GO.ID),]$gene,collapse=', ')
-        allRes$genes[j]<-genes
-      }
-      names_BP<-allRes$Term[b:1]
-      par(mai=c(1,3,1,1))
-      barplot(abs(log(as.numeric(allRes[b:1,]$parentchildFisher))),main=paste('Top',b,method,'for',name_main,sep=' '),horiz=TRUE,names.arg = names_BP,xlim=c(0,50),las=1,col='darkblue',cex.names = 0.7,xlab="abs(log(p-value))")
-      name_out<-paste(name_main,method,sep='_')
-      assign(name_out,allRes)
-      i=i+1
-      setwd('/Users/agatamuszynska/Work/Dell_work/Neuropathy_all_GRcM39/Results_PSI_flipped')
-      colnames(allRes)[6]<-'p-value'
-      #write.csv(allRes[,c(1,2,6,7)],paste(name_main,'_',th_GO,'_',method,'.csv',sep=''))
-      kable(allRes[,c(1,2,6)],caption=paste(name_main,th_GO,method,sep=' '))
-      }
-    }
-  }
-}
-
-```
-\newpage
-# Upset plots for both known and unknown
-```{r,warning=FALSE,message=FALSE,fig.align='left'}
-
-BP_BK<-list('alt_5_prime'=alt_5_prime_both_known_common_BP$GO.ID,
-       'exon_skip'=exon_skip_both_known_common_BP$GO.ID,
-       'mult_exon_skip'=mult_exon_skip_both_known_common_BP$GO.ID,
-       'mutex_exons'=mutex_exons_both_known_common_BP$GO.ID)
-upset(fromList(BP_BK))
-grid.text("BP overlap for old+old group",x = 0.65, y=0.95, gp=gpar(fontsize=10))
-
-BP_BK_i<-intersect(alt_5_prime_both_known_common_BP$Term,intersect(exon_skip_both_known_common_BP$Term,intersect(mutex_exons_both_known_common_BP$Term,mult_exon_skip_both_known_common_BP$Term)))
-
-CC_BK<-list('alt_5_prime'=alt_5_prime_both_known_common_CC$GO.ID,
-       'exon_skip'=exon_skip_both_known_common_CC$GO.ID,
-       'mult_exon_skip'=mult_exon_skip_both_known_common_CC$GO.ID,
-       'mutex_exons'=mutex_exons_both_known_common_CC$GO.ID)
-upset(fromList(CC_BK))
-grid.text("CC overlap for old+old group",x = 0.65, y=0.95, gp=gpar(fontsize=10))
-CC_BK_i<-intersect(alt_5_prime_both_known_common_CC$Term,intersect(exon_skip_both_known_common_CC$Term,intersect(mutex_exons_both_known_common_CC$Term,mult_exon_skip_both_known_common_CC$Term)))
-intersect(alt_5_prime_both_known_common_CC$Term,intersect(exon_skip_both_known_common_CC$Term,mutex_exons_both_known_common_CC$Term))
-
-
-MF_BK<-list('alt_5_prime'=alt_5_prime_both_known_common_MF$GO.ID,
-       'exon_skip'=exon_skip_both_known_common_MF$GO.ID,
-       'mult_exon_skip'=mult_exon_skip_both_known_common_MF$GO.ID,
-       'mutex_exons'=mutex_exons_both_known_common_MF$GO.ID)
-upset(fromList(MF_BK))
-grid.text("MF overlap for old+old group",x = 0.65, y=0.95, gp=gpar(fontsize=10))
-MF_BK_i<-intersect(alt_5_prime_both_known_common_MF$Term,intersect(exon_skip_both_known_common_MF$Term,intersect(mutex_exons_both_known_common_MF$Term,mult_exon_skip_both_known_common_MF$Term)))
-
-BP_BN<-list('alt_5_prime'=alt_5_prime_both_new_common_BP$GO.ID,
-       'exon_skip'=exon_skip_both_new_common_BP$GO.ID,
-       'mult_exon_skip'=mult_exon_skip_both_new_common_BP$GO.ID,
-       'mutex_exons'=mutex_exons_both_new_common_BP$GO.ID)
-upset(fromList(BP_BN))
-grid.text("BP overlap for new+new group",x = 0.65, y=0.95, gp=gpar(fontsize=10))
-BP_BN_i<-intersect(alt_5_prime_both_new_common_BP$Term,intersect(exon_skip_both_new_common_BP$Term,intersect(mutex_exons_both_new_common_BP$Term,mult_exon_skip_both_new_common_BP$Term)))
-
-
-CC_BN<-list('alt_5_prime'=alt_5_prime_both_new_common_CC$GO.ID,
-       'exon_skip'=exon_skip_both_new_common_CC$GO.ID,
-       'mult_exon_skip'=mult_exon_skip_both_new_common_CC$GO.ID,
-       'mutex_exons'=mutex_exons_both_new_common_CC$GO.ID)
-upset(fromList(CC_BN))
-grid.text("CC overlap for new+new group",x = 0.65, y=0.95, gp=gpar(fontsize=10))
-CC_BN_i<-intersect(alt_5_prime_both_new_common_CC$Term,intersect(exon_skip_both_new_common_CC$Term,intersect(mutex_exons_both_new_common_CC$Term,mult_exon_skip_both_new_common_CC$Term)))
-
-
-MF_BN<-list('alt_5_prime'=alt_5_prime_both_new_common_MF$GO.ID,
-       'exon_skip'=exon_skip_both_new_common_MF$GO.ID,
-       'mult_exon_skip'=mult_exon_skip_both_new_common_MF$GO.ID,
-       'mutex_exons'=mutex_exons_both_new_common_MF$GO.ID)
-upset(fromList(MF_BN))
-grid.text("MF overlap for new+new group",x = 0.65, y=0.95, gp=gpar(fontsize=10))
-MF_BN_i<-intersect(alt_5_prime_both_new_common_MF$Term,intersect(exon_skip_both_new_common_MF$Term,intersect(mutex_exons_both_new_common_MF$Term,mult_exon_skip_both_new_common_MF$Term)))
+BKg<-c(length(unique(alt_3_prime_both_known$gene_name)),length(unique(alt_5_prime_both_known$gene_name)),length(unique(exon_skip_both_known$gene_name)),length(unique(mutex_exons_both_known$gene_name)),length(unique(mult_exon_skip_both_known$gene_name)))
+BK_cg<-c(length(unique(alt_3_prime_both_known_common$gene_name)),length(unique(alt_5_prime_both_known_common$gene_name)),length(unique(exon_skip_both_known_common$gene_name)),length(unique(mutex_exons_both_known_common$gene_name)),length(unique(mult_exon_skip_both_known_common$gene_name)))
+BK_per<-BK_cg/BKg*100
+BNg<-c(length(unique(alt_3_prime_both_new$gene_name)),length(unique(alt_5_prime_both_new$gene_name)),length(unique(exon_skip_both_new$gene_name)),length(unique(mutex_exons_both_new$gene_name)),length(unique(mult_exon_skip_both_new$gene_name)))
+BN_cg<-c(length(unique(alt_3_prime_both_new_common$gene_name)),length(unique(alt_5_prime_both_new_common$gene_name)),length(unique(exon_skip_both_new_common$gene_name)),length(unique(mutex_exons_both_new_common$gene_name)),length(unique(mult_exon_skip_both_new_common$gene_name)))
+BN_per<-BN_cg/BNg*100
+NaOg<-c(length(unique(alt_3_prime_newAndOld$gene_name)),length(unique(alt_5_prime_newAndOld$gene_name)),length(unique(exon_skip_newAndOld$gene_name)),length(unique(mutex_exons_newAndOld$gene_name)),length(unique(mult_exon_skip_newAndOld$gene_name)))
+NaO_cg<-c(length(unique(alt_3_prime_newAndOld_common$gene_name)),length(unique(alt_5_prime_newAndOld_common$gene_name)),length(unique(exon_skip_newAndOld_common$gene_name)),length(unique(mutex_exons_newAndOld_common$gene_name)),length(unique(mult_exon_skip_newAndOld_common$gene_name)))
+NaO_per<-NaO_cg/NaOg*100
+total<-BKg+BNg+NaOg
+tab_allg<-cbind(BKg,BK_cg,round(BK_per,digits=2),BNg,BN_cg,round(BN_per,digits=2),NaOg,NaO_cg,round(NaO_per,digits=2),total)
+colnames(tab_allg)<-c('both iso known','both iso known_common','Percentage','both iso new','both iso new common','Percentage','new and old','new and old common','Percentage','Total')
+rownames(tab_allg)<-c('Alt_3_prime','Alt_5_prime','exon_skip','mutex_exons','mult_exon_skip')
+kable(tab_allg)
+#write.csv(tab_allg,"/home/agata/Documents/Work/Dell_work/Neuropathy_all_GRcM39/Tab_allg.csv")
 
 ```
