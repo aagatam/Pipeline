@@ -11,7 +11,7 @@ params:
 ```{r "setup", include=FALSE}
 #sudo apt-get install -y libcurl4-openssl-dev <-for curlr
 #sudo apt-get install -y libxml2-dev <-for XML
-packages<-c("knitr","RColorBrewer","VennDiagram","veccompare","ggplot2","pals","dplyr","matrixStats","gplots","UpSetR","XML","yaml")
+packages<-c("knitr","RColorBrewer","VennDiagram","veccompare","ggplot2","pals","dplyr","matrixStats","gplots","UpSetR","XML","yaml", "tmod")
 package.check <- lapply(
   packages,
   FUN = function(x) {
@@ -22,9 +22,9 @@ package.check <- lapply(
   }
 )
 if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager",repos = "http://cran.us.r-project.org")
-BiocManager::install(version = "3.10")
-listOfBiocPackages<-c("topGO","GOfuncR","annotate","biomaRt","GOfuncR")
+   { install.packages("BiocManager",repos = "http://cran.us.r-project.org")
+BiocManager::install(version = "3.10")}
+listOfBiocPackages<-c("topGO","GOfuncR","annotate","biomaRt","GOfuncR","ComplexHeatmap")
 notInstalled <- which( !listOfBiocPackages %in% rownames(installed.packages()) )
 ## check there's still something left to install
 if( length(notInstalled) ) {
@@ -34,6 +34,7 @@ path_configs<-params$inpath
 
 #opts_knit$set(root.dir = path)
 knitr::opts_chunk$set(echo=FALSE)
+#reshape2 ComplexHeatmap tidyverse tmod rcartocolor gridExtra metR
 ```
 
 ```{r,warning=FALSE,message=FALSE,include=FALSE}
@@ -92,10 +93,12 @@ for ( i in c(1:5))
 #Divide into 3 groups: both new, new+old, only old
 PSI_NaO<-config$TH_PSI
 sd_th<-config$TH_STD
+th<-config$TH_SAMPLES
 res_NO<-matrix(nrow=9,ncol=5)
 res_NN<-matrix(nrow=9,ncol=5)
 res_OO<-matrix(nrow=9,ncol=5)
-
+no_rep<-length(Description$Condition)/max(Description$Repetition)
+names_batches<-unique(paste(Description$Condition,Description$Batch,sep='_'))
 i=1
 for (sdTH in sd_th)
 {
@@ -145,9 +148,7 @@ for (sdTH in sd_th)
             spladder_newAndOld[h,]$PSI_flipped='Yes'
           }
       }
-  }
-  #A=Iso2, refIso=Iso1
-  else
+  }else
     {
       indices<-grep('.psi',colnames(spladder_newAndOld))
       for (h in c(1:dim(spladder_newAndOld)[1]))
@@ -162,12 +163,12 @@ for (sdTH in sd_th)
         }
     }
   #Calculate common part
-  count_table<-matrix(0L,nrow=length(unique(spladder_newAndOld$gene_name)),ncol=22)
+  count_table<-matrix(0L,nrow=length(unique(spladder_newAndOld$gene_name)),ncol=no_rep)
   rownames(count_table)<-unique(spladder_newAndOld$gene_name)
-  colnames(count_table)<-c('WTP_PNSL_1','WTP_SHAM_1','WTP_PNSL_2','WTP_SHAM_2','WTP_PNSL_3','WTP_SHAM_3',
-                           'CMV_PNSL_1','CMV_PNSL_2','CMV_PNSL_3','CMV_SHAM_1','CMV_SHAM_2','CMV_SHAM_3',
-                           'DLX_PNSL_1','DLX_PNSL_2','DLX_PNSL_3','DLX_SHAM_1','DLX_SHAM_2','DLX_SHAM_3',
-                           'NAV_PNSL_2','NAV_PNSL_3','NAV_SHAM_2','NAV_SHAM_3')
+  colnames(count_table)<-names_batches#c('WTP_PNSL_1','WTP_SHAM_1','WTP_PNSL_2','WTP_SHAM_2','WTP_PNSL_3','WTP_SHAM_3',
+                           # 'CMV_PNSL_1','CMV_PNSL_2','CMV_PNSL_3','CMV_SHAM_1','CMV_SHAM_2','CMV_SHAM_3',
+                           # 'DLX_PNSL_1','DLX_PNSL_2','DLX_PNSL_3','DLX_SHAM_1','DLX_SHAM_2','DLX_SHAM_3',
+                           # 'NAV_PNSL_2','NAV_PNSL_3','NAV_SHAM_2','NAV_SHAM_3')
   indices<-grep('.psi',colnames(spladder_newAndOld))
   for (g  in c(1:dim(spladder_newAndOld)[1]))
   {
@@ -175,7 +176,7 @@ for (sdTH in sd_th)
     {
       more<-length(which(spladder_newAndOld[g,indices[grep(name,colnames(spladder_newAndOld)[indices])]]>PSI_NaO))
       sample_deviation<-sd(spladder_newAndOld[g,indices[grep(name,colnames(spladder_newAndOld)[indices])]],na.rm=TRUE)
-      if (more>=th && sample_deviation<sdTH && is.na(sample_deviation)!=TRUE) #more>=th &&<- threshold dla final filtration
+      if (more>=th && sample_deviation<sd_th && is.na(sample_deviation)!=TRUE) #more>=th &&<- threshold dla final filtration
       {
         spladder_newAndOld[g,name]<-'Yes'
         count_table[toString(spladder_newAndOld[g,'gene_name']),name]<-count_table[toString(spladder_newAndOld[g,'gene_name']),name]+1
@@ -184,10 +185,10 @@ for (sdTH in sd_th)
     }
   }
   #common- eventy występujące we wszystkich
-  Common_all<-apply(spladder_newAndOld[,(dim(spladder_newAndOld)[2]-21):dim(spladder_newAndOld)[2]],1, function(x) sum(x=='Yes'))
-  print(length(which(Common_all==22)))
-  res_NO[i,j]<-length(which(Common_all==22))
-  File_common<-spladder_newAndOld[which(Common_all==22),]
+  Common_all<-apply(spladder_newAndOld[,(dim(spladder_newAndOld)[2]-(no_rep-1)):dim(spladder_newAndOld)[2]],1, function(x) sum(x=='Yes'))
+  print(length(which(Common_all==no_rep)))
+  res_NO[i,j]<-length(which(Common_all==no_rep))
+  File_common<-spladder_newAndOld[which(Common_all==no_rep),]
   score<-apply(File_common[,indices],1,mean)
   File_common$Score<-round(score,2)
   File_common_sorted<-File_common[order(File_common$Score,decreasing=TRUE),]
@@ -200,12 +201,9 @@ for (sdTH in sd_th)
   for (file_to_calc_common in c('spladder_both_new','spladder_both_known'))
   {
     data_to_calc<-get(paste(file_to_calc_common))
-    count_table<-matrix(0L,nrow=length(unique(data_to_calc$gene_name)),ncol=22)
+    count_table<-matrix(0L,nrow=length(unique(data_to_calc$gene_name)),ncol=no_rep)
     rownames(count_table)<-unique(data_to_calc$gene_name)
-    colnames(count_table)<-c('WTP_PNSL_1','WTP_SHAM_1','WTP_PNSL_2','WTP_SHAM_2','WTP_PNSL_3','WTP_SHAM_3',
-                           'CMV_PNSL_1','CMV_PNSL_2','CMV_PNSL_3','CMV_SHAM_1','CMV_SHAM_2','CMV_SHAM_3',
-                           'DLX_PNSL_1','DLX_PNSL_2','DLX_PNSL_3','DLX_SHAM_1','DLX_SHAM_2','DLX_SHAM_3',
-                           'NAV_PNSL_2','NAV_PNSL_3','NAV_SHAM_2','NAV_SHAM_3')
+    colnames(count_table)<-names_batches
     indices<-grep('.psi',colnames(data_to_calc))
     for (g  in c(1:dim(data_to_calc)[1]))
     {
@@ -214,7 +212,7 @@ for (sdTH in sd_th)
         # more<-length(which(data_to_calc[g,indices[grep(name,colnames(data_to_calc)[indices])]]>PSI_L &
         #                    data_to_calc[g,indices[grep(name,colnames(data_to_calc)[indices])]]<PSI_H))
         sample_deviation<-sd(data_to_calc[g,indices[grep(name,colnames(data_to_calc)[indices])]],na.rm=TRUE)
-        if (sample_deviation<sdTH && is.na(sample_deviation)!=TRUE) #more>=th && 
+        if (sample_deviation<sd_th && is.na(sample_deviation)!=TRUE) #more>=th && 
         {
           data_to_calc[g,name]<-'Yes'
           count_table[toString(data_to_calc[g,'gene_name']),name]<-count_table[toString(data_to_calc[g,'gene_name']),name]+1
@@ -223,14 +221,14 @@ for (sdTH in sd_th)
       }
     }
   #common- eventy występujące we wszystkich
-    Common_all<-apply(data_to_calc[,(dim(data_to_calc)[2]-21):dim(data_to_calc)[2]],1, function(x) sum(x=='Yes'))
-    print(length(which(Common_all==22)))
+    Common_all<-apply(data_to_calc[,(dim(data_to_calc)[2]-(no_rep-1)):dim(data_to_calc)[2]],1, function(x) sum(x=='Yes'))
+    print(length(which(Common_all==no_rep)))
     if(kk==1)
     {
-      res_NN[i,j]<-length(which(Common_all==22))
+      res_NN[i,j]<-length(which(Common_all==no_rep))
     }
-    else res_OO[i,j]<-length(which(Common_all==22))
-    File_common<-data_to_calc[which(Common_all==22),]
+    else res_OO[i,j]<-length(which(Common_all==no_rep))
+    File_common<-data_to_calc[which(Common_all==no_rep),]
     score<-apply(File_common[,indices],1,mean)
     File_common$Score<-round(score,2)
     File_common_sorted<-File_common[order(File_common$Score,decreasing=TRUE),]
@@ -245,35 +243,6 @@ for (sdTH in sd_th)
 }
   i=i+1
 }
-events<-c('alt_3_prime','alt_5_prime','exon_skip','mult_exon_skip','mutex_exons')
-plot(sd_th,res_NO[,1],type='l',ylim=c(0,5000),col='red',xlab='Sd threshold',ylab='Events detected',main='New and known')
-colls<-c('blue','black','cyan','yellow')
-j=1
-for (i in c(2:5))
-{
-  lines(sd_th,res_NO[,i],col=colls[j])
-  j=j+1
-}
-legend(0.4,4500,events,fill=c('red',colls),cex=0.7)
-j=1
-plot(sd_th,res_NN[,1],type='l',ylim=c(0,750),col='red',xlab='Sd threshold',ylab='Events detected', main='Both new')
-for (i in c(2:5))
-{
-  lines(sd_th,res_NN[,i],col=colls[j])
-  j=j+1
-}
-legend(0.1,750,events,fill=c('red',colls),cex=0.7)
-j=1
-plot(sd_th,res_OO[,1],type='l',ylim=c(0,2000),col='red',xlab='Sd threshold',ylab='Events detected',main='Both known')
-for (i in c(2:5))
-{
-  lines(sd_th,res_OO[,i],col=colls[j])
-  j=j+1
-}
-legend(0.1,2000,events,fill=c('red',colls),cex=0.7)
-
-setwd('/Users/agatamuszynska/Documents/Work/Neuropathy_all_GRcM39/Results_no_PSI_th')
-save.image('Final_both_thresholds_grudzien.RData')
 ```
 
 # Section 1 
@@ -300,9 +269,6 @@ colnames(tab_all)<-c('both iso known','both iso known_common','Percentage','both
 
 rownames(tab_all)<-c('Alt_3_prime','Alt_5_prime','exon_skip','mutex_exons','mult_exon_skip')
 kable(tab_all)
-#write.csv(tab_all,"/home/agata/Documents/Work/Dell_work/Neuropathy_all_GRcM39/Tab_all.csv")
-count_na <- rowSums(is.na(exon_skip_newAndOld_common))
-
 ```
 ```{r,warning=FALSE,message=FALSE,fig.align='left'}
 BKg<-c(length(unique(alt_3_prime_both_known$gene_name)),length(unique(alt_5_prime_both_known$gene_name)),length(unique(exon_skip_both_known$gene_name)),length(unique(mutex_exons_both_known$gene_name)),length(unique(mult_exon_skip_both_known$gene_name)))
@@ -319,6 +285,450 @@ tab_allg<-cbind(BKg,BK_cg,round(BK_per,digits=2),BNg,BN_cg,round(BN_per,digits=2
 colnames(tab_allg)<-c('both iso known','both iso known_common','Percentage','both iso new','both iso new common','Percentage','new and old','new and old common','Percentage','Total')
 rownames(tab_allg)<-c('Alt_3_prime','Alt_5_prime','exon_skip','mutex_exons','mult_exon_skip')
 kable(tab_allg)
-#write.csv(tab_allg,"/home/agata/Documents/Work/Dell_work/Neuropathy_all_GRcM39/Tab_allg.csv")
+```
 
+# Section 2
+##Results for new and old group
+
+```{r,warning=FALSE,message=FALSE,fig.align='left'}
+ltNO=list('alt_3_prime'=as.character(unique(alt_3_prime_newAndOld_common$gene_name)),
+          'alt_5_prime'=as.character(unique(alt_5_prime_newAndOld_common$gene_name)),
+          'exon_skip'=as.character(unique(exon_skip_newAndOld_common$gene_name)),
+          'mult_exon_skip'=as.character(unique(mult_exon_skip_newAndOld_common$gene_name)),
+          'mutex_exons'=as.character(unique(mutex_exons_newAndOld_common$gene_name)))
+UpSetR::upset(fromList(ltNO),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+
+
+ltBK=list('alt_3_prime'=as.character(unique(alt_3_prime_both_known_common$gene_name)),
+          'alt_5_prime'=as.character(unique(alt_5_prime_both_known_common$gene_name)),
+          'exon_skip'=as.character(unique(exon_skip_both_known_common$gene_name)),
+          'mult_exon_skip'=as.character(unique(mult_exon_skip_both_known_common$gene_name)),
+           'mutex_exons'=as.character(unique(mutex_exons_both_known_common$gene_name)))
+UpSetR::upset(fromList(ltBK),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+
+ltBN=list('alt_3_prime'=as.character(unique(alt_3_prime_both_new_common$gene_name)),
+          'alt_5_prime'=as.character(unique(alt_5_prime_both_new_common$gene_name)),
+                   'exon_skip'=as.character(unique(exon_skip_both_new_common$gene_name)),
+                  'mult_exon_skip'=as.character(unique(mult_exon_skip_both_new_common$gene_name)),
+                   'mutex_exons'=as.character(unique(mutex_exons_both_new_common$gene_name)))
+UpSetR::upset(fromList(ltBN),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+
+list_BN<-unique(c(as.character(unique(alt_3_prime_both_new_common$gene_name)),as.character(unique(alt_5_prime_both_new_common$gene_name)),as.character(unique(exon_skip_both_new_common$gene_name)),as.character(unique(mult_exon_skip_both_new_common$gene_name)),as.character(unique(mutex_exons_both_new_common$gene_name))))
+
+list_BK<-unique(c(as.character(unique(alt_3_prime_both_known_common$gene_name)),as.character(unique(alt_5_prime_both_known_common$gene_name)),as.character(unique(exon_skip_both_known_common$gene_name)),as.character(unique(mult_exon_skip_both_known_common$gene_name)),as.character(unique(mutex_exons_both_known_common$gene_name))))
+
+list_NAO<-unique(c(as.character(unique(alt_3_prime_newAndOld_common$gene_name)),as.character(unique(alt_5_prime_newAndOld_common$gene_name)),as.character(unique(exon_skip_newAndOld_common$gene_name)),as.character(unique(mult_exon_skip_newAndOld_common$gene_name)),as.character(unique(mutex_exons_newAndOld_common$gene_name))))
+```
+
+
+```{r,warning=FALSE,message=FALSE,fig.align='left'}
+
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+
+ven<-venn.diagram(x=list('newAndOld'=unique(mutex_exons_newAndOld_common$gene_name),
+                   'both_new'=unique(mutex_exons_both_new_common$gene_name),
+                  'both_known'=unique(mutex_exons_both_known_common$gene_name)),
+                      main= 'Mutually exclusive',
+                      filename=NULL,
+                      fill =c("yellow","lightgreen",
+                              "mediumorchid"),output=TRUE,imagetype='png')
+render.venn.diagram(ven)
+ven<-venn.diagram(x=list('newAndOld'=unique(exon_skip_newAndOld_common$gene_name),
+                   'both_new'=unique(exon_skip_both_new_common$gene_name),
+                  'both_known'=unique(exon_skip_both_known_common$gene_name)),
+                      main= 'Exon skip',
+                      filename=NULL,
+                      fill =c("yellow","lightgreen",
+                              "mediumorchid"),output=TRUE,imagetype='png')
+render.venn.diagram(ven)
+ven<-venn.diagram(x=list('newAndOld'=unique(alt_5_prime_newAndOld_common$gene_name),
+                   'both_new'=unique(alt_5_prime_both_new_common$gene_name),
+                  'both_known'=unique(alt_5_prime_both_known_common$gene_name)),
+                      main= 'Alternative 5 prime',
+                      filename=NULL,
+                      fill =c("yellow","lightgreen",
+                              "mediumorchid"),output=TRUE,imagetype='png')
+render.venn.diagram(ven)
+
+ven<-venn.diagram(x=list('newAndOld'=unique(alt_3_prime_newAndOld_common$gene_name),
+                   'both_new'=unique(alt_3_prime_both_new_common$gene_name),
+                  'both_known'=unique(alt_3_prime_both_known_common$gene_name)),
+                      main= 'Alternative 3 prime',
+                      filename=NULL,
+                      fill =c("yellow","lightgreen",
+                              "mediumorchid"),output=TRUE,imagetype='png')
+render.venn.diagram(ven)
+ven<-venn.diagram(x=list('newAndOld'=unique(mult_exon_skip_newAndOld_common$gene_name),
+                   'both_new'=unique(mult_exon_skip_both_new_common$gene_name),
+                  'both_known'=unique(mult_exon_skip_both_known_common$gene_name)),
+                      main= 'Multiple exon skip',
+                      filename=NULL,
+                      fill =c("yellow","lightgreen",
+                              "mediumorchid"),output=TRUE,imagetype='png')
+render.venn.diagram(ven)
+```
+
+\newpage
+
+#Results for new/new and old/old groups
+
+```{r,warning=FALSE,message=FALSE,fig.align='left'}
+th_GO<-condig$TH_GO
+gtf.file<-config$ANNOTATION
+gtf.gr<-rtracklayer::import(gtf.file) # creates a GRanges object
+gtf.df = as.data.frame(gtf.gr)
+genes_GTF = unique(gtf.df[ ,"gene_id"])
+
+
+for (event in c('alt_3_prime','alt_5_prime','exon_skip','mult_exon_skip','mutex_exons'))
+{
+  for (type in c('both_new','both_known','newAndOld'))
+  {
+    name_main<-paste(event,'_',type,'_common',sep='')
+    data<-get(name_main)
+    geneList<-genes_GTF
+    geneList2 <- factor(as.integer(geneList %in% data$gene_name))
+    SYM_MM<-data$gene_name_proper
+    names(geneList2)<-geneList
+    i=1
+    for (method in c('CC','MF','BP'))
+    {
+      GOdata <- new("topGOdata", ontology = method, allGenes = geneList2,
+                annot = annFUN.org,mapping='org.Mm.eg.db',
+                ID='ensembl')
+      test.stat <- new("parentChild", testStatistic = GOFisherTest, name = "Fisher test")
+      resultFisher <- getSigGroups(GOdata, test.stat)
+      used<-usedGO(GOdata)
+      allRes <-  GenTable(GOdata , parentchildFisher=resultFisher,topNodes = length(used),numChar=1000)
+      print(length(which(allRes$parentchildFisher<0.01)))
+      
+      p.val.FP <- score(resultFisher)
+      p_val_adj<-p.adjust(p.val.FP,method="BY")
+      lnames <- names(p.val.FP)[p.val.FP < 0.01]
+      lgenes <- get_anno_genes(lnames, database = 'org.Mm.eg.db',genes=SYM_MM)
+
+      allRes<-allRes[which(as.numeric(allRes$parentchildFisher)<th_GO),]
+      p.val.FP <- score(resultFisher)
+      lnames <- names(p.val.FP)[p.val.FP < 0.01]
+      lgenes <- get_anno_genes(lnames, database = 'Mus.musculus',genes=data$gene_name_proper)
+      
+      if (dim(allRes)[1]<10){b=dim(allRes)[1]}
+      else {b=10}
+      if (b!=0)
+      {
+      for (j in c(1:b))
+      {
+        if (allRes[j,]$parentchildFisher=="< 1e-30")
+        {
+          allRes[j,]$parentchildFisher=1e-30
+        }
+      }
+        
+      for  (j in c(1:dim(allRes)[1]))
+      {
+        genes<-paste(lgenes[which(lgenes$go_id==allRes[j,]$GO.ID),]$gene,collapse=', ')
+        allRes$genes[j]<-genes
+      }
+      names_BP<-allRes$Term[b:1]
+      # png(paste('/Users/agatamuszynska/Documents/Work/Neuropathy_all_GRcM39/Results_test/Bar_',name_main,'_',method,'.png',sep=''),width=1600,height=1500,res=300)
+      # par(mai=c(1,3,1,1))
+      # 
+      # barplot(abs(log(as.numeric(allRes[b:1,]$parentchildFisher))),main=paste('Top',b,method,'for',name_main,sep=' '),cex.main=0.8,horiz=TRUE,names.arg = names_BP,xlim=c(0,50),las=1,col='darkblue',cex.names = 0.7,xlab="abs(log(p-value))")
+      # dev.off()
+      name_out<-paste(name_main,method,sep='_')
+      assign(name_out,allRes)
+      i=i+1
+      colnames(allRes)[6]<-'p-value'
+      kable(allRes[,c(1,2,6)],caption=paste(name_main,th_GO,method,sep=' '))
+      }
+    }
+  }
+}
+
+```
+\newpage
+# Upset plots for both known and unknown
+```{r,warning=FALSE,message=FALSE,fig.align='left'}
+BP_BK<-list('alt_3_prime'=alt_3_prime_both_known_common_BP$GO.ID,
+            'alt_5_prime'=alt_5_prime_both_known_common_BP$GO.ID,
+            'exon_skip'=exon_skip_both_known_common_BP$GO.ID,
+            'mult_exon_skip'=mult_exon_skip_both_known_common_BP$GO.ID,
+            'mutex_exons'=mutex_exons_both_known_common_BP$GO.ID)
+UpSetR::upset(fromList(BP_BK),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE) 
+
+BP_BK_i<-intersect(alt_3_prime_both_known_common_BP$Term,intersect(alt_5_prime_both_known_common_BP$Term,intersect(exon_skip_both_known_common_BP$Term,intersect(mutex_exons_both_known_common_BP$Term,mult_exon_skip_both_known_common_BP$Term))))
+
+CC_BK<-list('alt_3_prime'=alt_3_prime_both_known_common_CC$GO.ID,'alt_5_prime'=alt_5_prime_both_known_common_CC$GO.ID,
+       'exon_skip'=exon_skip_both_known_common_CC$GO.ID,
+       'mult_exon_skip'=mult_exon_skip_both_known_common_CC$GO.ID,
+       'mutex_exons'=mutex_exons_both_known_common_CC$GO.ID)
+UpSetR::upset(fromList(CC_BK),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+
+CC_BK_i<-intersect(alt_3_prime_both_known_common_CC$Term,intersect(alt_5_prime_both_known_common_CC$Term,intersect(exon_skip_both_known_common_CC$Term,intersect(mutex_exons_both_known_common_CC$Term,mult_exon_skip_both_known_common_CC$Term))))
+intersect(alt_5_prime_both_known_common_CC$Term,intersect(exon_skip_both_known_common_CC$Term,mutex_exons_both_known_common_CC$Term))
+
+
+MF_BK<-list('alt_3_prime'=alt_3_prime_both_known_common_MF$GO.ID,'alt_5_prime'=alt_5_prime_both_known_common_MF$GO.ID,
+       'exon_skip'=exon_skip_both_known_common_MF$GO.ID,
+       'mult_exon_skip'=mult_exon_skip_both_known_common_MF$GO.ID,
+       'mutex_exons'=mutex_exons_both_known_common_MF$GO.ID)
+UpSetR::upset(fromList(MF_BK),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+MF_BK_i<-intersect(alt_3_prime_both_known_common_MF$Term,intersect(alt_5_prime_both_known_common_MF$Term,intersect(exon_skip_both_known_common_MF$Term,intersect(mutex_exons_both_known_common_MF$Term,mult_exon_skip_both_known_common_MF$Term))))
+
+
+BP_BN<-list('alt_3_prime'=alt_3_prime_both_new_common_BP$GO.ID,'alt_5_prime'=alt_5_prime_both_new_common_BP$GO.ID,
+       'exon_skip'=exon_skip_both_new_common_BP$GO.ID,
+       'mult_exon_skip'=mult_exon_skip_both_new_common_BP$GO.ID,
+       'mutex_exons'=mutex_exons_both_new_common_BP$GO.ID)
+UpSetR::upset(fromList(BP_BN),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+BP_BN_i<-intersect(alt_3_prime_both_new_common_BP$Term,intersect(alt_5_prime_both_new_common_BP$Term,intersect(exon_skip_both_new_common_BP$Term,intersect(mutex_exons_both_new_common_BP$Term,mult_exon_skip_both_new_common_BP$Term))))
+
+CC_BN<-list('alt_3_prime'=alt_3_prime_both_new_common_CC$GO.ID,'alt_5_prime'=alt_5_prime_both_new_common_CC$GO.ID,
+       'exon_skip'=exon_skip_both_new_common_CC$GO.ID,
+       'mult_exon_skip'=mult_exon_skip_both_new_common_CC$GO.ID,
+       'mutex_exons'=mutex_exons_both_new_common_CC$GO.ID)
+UpSetR::upset(fromList(CC_BN),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+CC_BN_i<-intersect(alt_3_prime_both_new_common_CC$Term,intersect(alt_5_prime_both_new_common_CC$Term,intersect(exon_skip_both_new_common_CC$Term,intersect(mutex_exons_both_new_common_CC$Term,mult_exon_skip_both_new_common_CC$Term))))
+
+MF_BN<-list('alt_3_prime'=alt_3_prime_both_new_common_MF$GO.ID,'alt_5_prime'=alt_5_prime_both_new_common_MF$GO.ID,
+       'exon_skip'=exon_skip_both_new_common_MF$GO.ID,
+       'mult_exon_skip'=mult_exon_skip_both_new_common_MF$GO.ID,
+       'mutex_exons'=mutex_exons_both_new_common_MF$GO.ID)
+UpSetR::upset(fromList(MF_BN),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+MF_BN_i<-intersect(alt_3_prime_both_new_common_MF$Term,intersect(alt_5_prime_both_new_common_MF$Term,intersect(exon_skip_both_new_common_MF$Term,intersect(mutex_exons_both_new_common_MF$Term,mult_exon_skip_both_new_common_MF$Term))))
+
+MF_NO_i<-intersect(alt_3_prime_newAndOld_common_MF$Term,intersect(alt_5_prime_both_new_common_MF$Term,intersect(exon_skip_both_new_common_MF$Term,intersect(mutex_exons_both_new_common_MF$Term,mult_exon_skip_both_new_common_MF$Term))))
+
+BP_ON<-list('alt_3_prime'=alt_3_prime_newAndOld_common_BP$GO.ID,'alt_5_prime'=alt_5_prime_newAndOld_common_BP$GO.ID,
+       'exon_skip'=exon_skip_newAndOld_common_BP$GO.ID,
+       'mult_exon_skip'=mult_exon_skip_newAndOld_common_BP$GO.ID,
+       'mutex_exons'=mutex_exons_newAndOld_common_BP$GO.ID)
+
+UpSetR::upset(fromList(BP_ON),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+BP_ON_i<-intersect(alt_3_prime_newAndOld_common_BP$Term,intersect(alt_5_prime_newAndOld_common_BP$Term,intersect(exon_skip_newAndOld_common_BP$Term,intersect(mutex_exons_newAndOld_common_BP$Term,mult_exon_skip_newAndOld_common_BP$Term))))
+
+CC_ON<-list('alt_3_prime'=alt_3_prime_newAndOld_common_CC$GO.ID,'alt_5_prime'=alt_5_prime_newAndOld_common_CC$GO.ID,
+       'exon_skip'=exon_skip_newAndOld_common_CC$GO.ID,
+       'mult_exon_skip'=mult_exon_skip_newAndOld_common_CC$GO.ID,
+       'mutex_exons'=mutex_exons_newAndOld_common_CC$GO.ID)
+
+UpSetR::upset(fromList(CC_ON),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+CC_ON_i<-intersect(alt_3_prime_newAndOld_common_CC$Term,intersect(alt_5_prime_newAndOld_common_CC$Term,intersect(exon_skip_newAndOld_common_CC$Term,intersect(mutex_exons_newAndOld_common_CC$Term,mult_exon_skip_newAndOld_common_CC$Term))))
+
+MF_ON<-list('alt_3_prime'=alt_3_prime_newAndOld_common_MF$GO.ID,'alt_5_prime'=alt_5_prime_newAndOld_common_MF$GO.ID,
+       'exon_skip'=exon_skip_newAndOld_common_MF$GO.ID,
+       'mult_exon_skip'=mult_exon_skip_newAndOld_common_MF$GO.ID,
+       'mutex_exons'=mutex_exons_newAndOld_common_MF$GO.ID)
+
+ UpSetR::upset(fromList(MF_ON),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+
+
+MF_ON_i<-intersect(alt_3_prime_newAndOld_common_MF$Term,intersect(alt_5_prime_newAndOld_common_MF$Term,intersect(exon_skip_newAndOld_common_MF$Term,intersect(mutex_exons_newAndOld_common_MF$Term,mult_exon_skip_newAndOld_common_MF$Term))))
+
+MF_NO_i<-intersect(alt_3_prime_newAndOld_common_MF$Term,intersect(alt_5_prime_newAndOld_common_MF$Term,intersect(exon_skip_newAndOld_common_MF$Term,intersect(mutex_exons_newAndOld_common_MF$Term,mult_exon_skip_newAndOld_common_MF$Term))))
+```
+
+\newpage
+
+#Results for old+old/OO+ON/OO+ON+NN
+```{r,warning=FALSE,message=FALSE,fig.align='left'}
+th_GO<-config$TH_GO
+geneList<-genes_GTF
+
+for (event in c('alt_3_prime','alt_5_prime','exon_skip','mult_exon_skip','mutex_exons'))
+{
+  for (type in c('OO','ON','NN','OO_ON','OO_ON_NN'))
+  {
+    if (type=='OO')
+    {
+      name_main<-paste(event,'_both_known_common',sep='')
+      data<-get(name_main)
+      name_main<-paste(event,'_OO',sep='')
+    }
+    if (type=='ON')
+    {
+      name_main<-paste(event,'_newAndOld_common',sep='')
+      data<-get(name_main)
+      name_main<-paste(event,'_ON',sep='')
+    }
+    else if (type=='NN')
+    {
+      name_main<-paste(event,'_both_new_common',sep='')
+      data<-get(name_main)
+      name_main<-paste(event,'_NN',sep='')
+    }
+    else if (type=='OO_ON')
+    {
+      name_main_OO<-paste(event,'_both_known_common',sep='')
+      name_main_ON<-paste(event,'_newAndOld_common',sep='')
+      data_OO<-get(name_main_OO)
+      data_ON<-get(name_main_ON)
+      data_ON<-subset(data_ON,select=-c(PSI_flipped))
+      data<-rbind(data_OO,data_ON)
+      name_main<-paste(event,'_OO_ON',sep='')
+    }
+    else if (type=='OO_ON_NN')
+    {
+      name_main_OO<-paste(event,'_both_known_common',sep='')
+      name_main_ON<-paste(event,'_newAndOld_common',sep='')
+      name_main_NN<-paste(event,'_both_new_common',sep='')
+      data_OO<-get(name_main_OO)
+      data_ON<-get(name_main_ON)
+      data_NN<-get(name_main_NN)
+      data_ON<-subset(data_ON,select=-c(PSI_flipped))
+      data<-rbind(data_OO,data_ON,data_NN)
+      name_main<-paste(event,'_OO_ON_NN',sep='')
+    }
+    
+    geneList2 <- factor(as.integer(geneList %in% data$gene_name))
+    SYM_MM<-data$gene_name_proper
+    names(geneList2)<-geneList
+    i=1
+    for (method in c('CC','MF','BP'))
+    {
+      GOdata <- new("topGOdata", ontology = method, allGenes = geneList2,
+                annot = annFUN.org,mapping='org.Mm.eg.db',
+                ID='ensembl')
+      test.stat <- new("parentChild", testStatistic = GOFisherTest, name = "Fisher test")
+      resultFisher <- getSigGroups(GOdata, test.stat)
+      used<-usedGO(GOdata)
+      allRes <-  GenTable(GOdata , parentchildFisher=resultFisher,topNodes = length(used),numChar=1000)
+
+      p.val.FP <- score(resultFisher)
+      lnames <- names(p.val.FP)[p.val.FP < 0.01]
+      lgenes <- get_anno_genes(lnames, database = 'org.Mm.eg.db',genes=SYM_MM)
+
+      #print(length(which(allRes_pVal$parentchildFisher<0.01)))
+      #assign(name.main,allRes_pVal)
+      allRes_pVal<-allRes[which(as.numeric(allRes$parentchildFisher)<th_GO),]
+      p.val.FP <- score(resultFisher)
+      lnames <- names(p.val.FP)[p.val.FP < 0.01]
+      lgenes <- get_anno_genes(lnames, database = 'Mus.musculus',genes=data$gene_name_proper)
+      if (dim(allRes_pVal)[1]<10){b=dim(allRes_pVal)[1]}
+      else {b=10}
+      if (b!=0)
+      {
+      for (j in c(1:b))
+      {
+        if (allRes_pVal[j,]$parentchildFisher=="< 1e-30")
+        {
+          allRes_pVal[j,]$parentchildFisher=1e-30
+        }
+      }
+        
+      for  (j in c(1:dim(allRes_pVal)[1]))
+      {
+        genes<-paste(lgenes[which(lgenes$go_id==allRes_pVal[j,]$GO.ID),]$gene,collapse=', ')
+        allRes_pVal$genes[j]<-genes
+      }
+      names_BP<-allRes_pVal$Term[b:1]
+      par(mai=c(1,3,1,1))
+      #barplot(abs(log(as.numeric(allRes_pVal[b:1,]$parentchildFisher))),main=paste('Top',b,method,'for',name_main,sep=' '),horiz=TRUE,names.arg = names_BP,xlim=c(0,50),las=1,col='darkblue',cex.names = 0.7,xlab="abs(log(p-value))")
+      name_out<-paste(name_main,method,sep='_')
+      i=i+1
+      colnames(allRes_pVal)[6]<-'p-value'
+      colnames(allRes)[6]<-'p-value'
+      assign(paste(name_out,'_pVal',sep=''),allRes_pVal)
+      assign(name_out,allRes)
+      #write.csv(allRes_pVal[,c(1,2,6,7)],paste(name_main,'_',th_GO,'_',method,'.csv',sep=''))
+      kable(allRes_pVal[,c(1,2,6)],caption=paste(name_main,th_GO,method,sep=' '))
+      }
+    }
+  }
+}
+
+```
+
+```{r fig.align='left', message=FALSE, r,warning=FALSE}
+for (event in events)
+{
+  i=1
+  #png(paste('/Users/agatamuszynska/Documents/Work/Neuropathy_all_GRcM39/Results_no_PSI_th/GO_',event,'.png',sep=''))
+  plot_list <- list() 
+  for (method in c('CC','MF','BP'))
+  {
+    
+    name_main_OO<-paste(event,'_OO_',method,sep='')
+    name_main_ON<-paste(event,'_ON_',method,sep='')
+    name_main_NN<-paste(event,'_NN_',method,sep='')
+    name_main_OO_ON<-paste(event,'_OO_ON_',method,sep='')
+    name_main_OO_ON_NN<-paste(event,'_OO_ON_NN_',method,sep='')
+    data_OO<-get(name_main_OO)
+    data_OO<-data_OO[,c(1:6)]
+    data_ON<-get(name_main_ON)
+    data_ON<-data_ON[,c(1:6)]
+    data_NN<-get(name_main_NN)
+    data_NN<-data_NN[,c(1:6)]
+    data_OO_ON<-get(name_main_OO_ON)
+    data_OO_ON<-data_OO_ON[,c(1:6)]
+    data_OO_ON_NN<-get(name_main_OO_ON_NN)
+    data_OO_ON_NN<-data_OO_ON_NN[,c(1:6)]
+    if (dim(data_NN)[1]==0 )
+    {
+      data_NN[1,]<-0
+    }
+    if (dim(data_OO)[1]==0 )
+    {
+      data_OO[1,]<-0
+    }
+    if (dim(data_ON)[1]==0 )
+    {
+      data_ON[1,]<-0
+    }
+       if (dim(data_OO_ON)[1]==0 )
+    {
+      data_OO_ON[1,]<-0
+    }
+    if (dim(data_OO_ON_NN)[1]==0 )
+    {
+      data_OO_ON_NN[1,]<-0
+    }
+
+    data_OO$Condition<-'OO'
+    data_ON$Condition<-'ON'
+    data_NN$Condition<-'NN'
+    data_OO_ON$Condition<-'OO_ON'
+    data_OO_ON_NN$Condition<-'OO_ON_NN'
+    GO_ID_ADD<-unique(c(data_OO$GO.ID[1:10]))#,data_OO_ON$GO.ID[1:10],data_OO_ON_NN$GO.ID[1:10]))
+    res_ADD<-rbind(data_OO[data_OO$GO.ID%in%GO_ID_ADD,],data_OO_ON[data_OO_ON$GO.ID%in%GO_ID_ADD,],data_OO_ON_NN[data_OO_ON_NN$GO.ID%in%GO_ID_ADD,])
+    # idx1<-which(res_ADD$GO.ID==0)
+    # res_ADD<-res_ADD[-idx1,]
+    if (any(res_ADD$`p-value`%in%'< 1e-30')){
+    res_ADD[res_ADD$`p-value`=='< 1e-30',]$`p-value`<-1e-30}
+    
+    GO_ID_SIN<-unique(c(data_OO$GO.ID[1:10],data_ON$GO.ID[1:10],data_NN$GO.ID[1:10]))
+    res_SIN<-rbind(data_OO[data_OO$GO.ID%in%GO_ID_SIN,],data_ON[data_ON$GO.ID%in%GO_ID_SIN,],data_NN[data_NN$GO.ID%in%GO_ID_SIN,])
+    # idx<-which(res_SIN$GO.ID==0)
+    # res_SIN<-res_SIN[-idx,]
+    if (any(res_SIN$`p-value`%in%'< 1e-30')){
+    res_SIN[res_SIN$`p-value`=='< 1e-30',]$`p-value`<-1e-30}
+    df_table <- map_df(.x = list("Combined" = res_ADD,
+                             "Single" = res_SIN),
+                   .f = bind_rows,
+                   .id = "src")
+
+    # Plot the combined dataset
+    plot_list[[i]]<-plot_df_1 <- ggplot(data = df_table, aes(x = Condition, y = Term,
+                                         color = as.numeric(`p-value`),size = Significant)) +
+    geom_point() +
+    ggtitle(paste("GO comparison",event,method,sep=' ')) +
+    theme(axis.text.x = element_text(angle = 90))+
+     theme(axis.text.y = element_text(size = 10))+
+    labs(size="No genes",col="P-value")+
+    scale_color_gradient2(low = "red",
+                        mid = "green",
+                        high = "blue",
+                        midpoint = 0.5)+
+    theme(legend.key.size = unit(1, 'cm'))+
+    facet_wrap(~src, scales = "free")
+    i=i+1
+    
+  }
+
+  g_new<-grid.arrange(grobs=plot_list,nrow=3,ncol=1)
+  ggsave(plot = g_new, width = 20, height = 20, dpi = 300,
+         filename=paste(spl_path,'/GO_',
+                        event,'.pdf',sep=''))
+
+}
 ```

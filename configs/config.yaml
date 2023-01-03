@@ -40,3 +40,4 @@ IP_PATH: /home/agata/Documents/Work/InterPro/interproscan-5.55-88.0
 TH_SAMPLES: 4
 TH_STD: 0.2
 TH_PSI: 0.1
+TH_GO: 0.01
