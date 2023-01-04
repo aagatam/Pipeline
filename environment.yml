@@ -1,4 +1,4 @@
-name: Pipeline_newR
+name: Pipeline_newestR
 channels:
   - conda-forge
   - bioconda
@@ -9,24 +9,26 @@ dependencies:
   - graphviz
   - r-tinytex
 # command tool installs
-  - r-base=4.1.3
-  - python=3.11.0
+  - r-base=4.2.1
+  - python
   - pip
-  - interproscan
+#  - interproscan
 # r channel installs
 #  - r-yaml=2.2.0
 #  - r-statmod=1.4.30
 #  - r-gplots=3.0.1
   - r-rmarkdown
-#  - r-magrittr
-# bioconda channel installs
+  - r-curl
+# #  - r-magrittr
+# # bioconda channel installs
   - fastqc=0.11
   - qualimap=2.2.2
   - multiqc
   - kallisto=0.48
   - hisat2= 2.2.1
   - stringtie=2.2.1
-#   - bioconductor-biomart
+# #   - bioconductor-biomart
+  - bioconductor-rtracklayer
   - pip:
     - spladder==2.4.3
     - numpy

@@ -24,7 +24,7 @@ TRANS: /home/agata/Documents/Work/Pipeline/Test_data/Mus_musculus.GRCm38.cdna.al
 
 ## genome and annotation files
 GENOME:  /home/agata/Documents/Work/Pipeline/Test_data/Mus_musculus.GRCm39.dna.toplevel.fa
-ANNOTATION: /home/agata/Documents/Work/Pipeline/Test_data/Mus_musculus.GRCm39.104.gtf
+ANNOTATION: /home/agata/Documents/Work/Dell_work/bisbee/Mus_musculus.GRCm39.104.gtf
 ATTRIBUTE: gene_id  # the attribute used in annotation file. It's usually "gene_id", but double check that since it may also be "gene", "ID"...
 
 ## number of cores
