@@ -1,4 +1,4 @@
-# High- Throughput data analysis pipeline
+# High- throughput data analysis pipeline
 
 ## How does this work?
 Snakeamke wrapper scripts (locates in the `workflow` folder) enable for automatic RNA-seq data analysis in terms of quality control, assembly, quantification, gene ontology, differential gene expression and alternative splicing and it's effects on protein level. Additional 'RMarkdown' script enables final visualization for AS.
@@ -38,4 +38,8 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis.
  - `snakemake -p -s workflow/interproscan_run.snakefile`
 ### 7. Final visualization with RMarkdown:
  - `R -e "rmarkdown::render('scripts/Plots.Rmd',params=list(event_type='event_type', event='event_no'),output_file='Out_name.pdf')"` \
- Here event_no is the event you want to visualize (for example mutex_exons_168) and event_type is one of: alt_3_prime, alt_5_prime, exon_skip, mult_exon_skip, mutex_exons (in this case mutex_exons).
+ Here `event_no` is the event you want to visualize (for example mutex_exons_168) and `event_type` is one of: alt_3_prime, alt_5_prime, exon_skip, mult_exon_skip, mutex_exons (in this case mutex_exons).
+
+## Differential gene expression and Gene Ontology analysis for RNA-seg
+
+## Differential gene expression and Gene Ontology for Illumina microarrays
