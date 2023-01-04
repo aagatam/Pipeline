@@ -53,7 +53,5 @@ Install desired species release, for example:
  - `R -e "rmarkdown::render('scripts/Expression_Kallisto.Rmd')"`
  - Output: `scripts/Expression_Kallisto.pdf`
 
-
-
 ## Differential gene expression and Gene Ontology for Illumina microarrays
  - `R -e "rmarkdown::render('scripts/Expression_Illumina_ microarrays.Rmd')"`

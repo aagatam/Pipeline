@@ -248,9 +248,9 @@ for (sdTH in sd_th)
 ```
 
 # Section 1 
-## Number of all and common alternative splicing events:
-- New/Old PSI>0.5 and sd <0.1
-- New/new $ old/old sd<0.1
+## Number of all and common alternative splicing events, when `r th` samples have to fullfil conditions:
+- New/Old PSI >`r PSI_NaO` and sd < `r sd_th`
+- New/new and old/old sd < `r sd_th`
 
 
 ```{r,warning=FALSE,message=FALSE,fig.align='left'}
@@ -267,11 +267,14 @@ NaO_c<-c(dim(alt_3_prime_newAndOld_common)[1],dim(alt_5_prime_newAndOld_common)[
 NaO_per<-NaO_c/NaO*100
 total<-BK+BN+NaO
 tab_all<-cbind(BK,BK_c,round(BK_per,digits=2),BN,BN_c,round(BN_per,digits=2),NaO,NaO_c,round(NaO_per,digits=2),total)
-colnames(tab_all)<-c('both iso known','both iso known_common','Percentage','both iso new','both iso new common','Percentage','new and old','new and old common','Percentage','Total')
+colnames(tab_all)<-c('both iso known','both iso known_common','%','both iso new','both iso new common','%','new and old','new and old common','%','Total')
 
 rownames(tab_all)<-c('Alt_3_prime','Alt_5_prime','exon_skip','mutex_exons','mult_exon_skip')
 kable(tab_all)
 ```
+
+## Number of all and common genes containing alternative splicing events:
+
 ```{r,warning=FALSE,message=FALSE,fig.align='left'}
 BKg<-c(length(unique(alt_3_prime_both_known$gene_name)),length(unique(alt_5_prime_both_known$gene_name)),length(unique(exon_skip_both_known$gene_name)),length(unique(mutex_exons_both_known$gene_name)),length(unique(mult_exon_skip_both_known$gene_name)))
 BK_cg<-c(length(unique(alt_3_prime_both_known_common$gene_name)),length(unique(alt_5_prime_both_known_common$gene_name)),length(unique(exon_skip_both_known_common$gene_name)),length(unique(mutex_exons_both_known_common$gene_name)),length(unique(mult_exon_skip_both_known_common$gene_name)))
@@ -284,13 +287,13 @@ NaO_cg<-c(length(unique(alt_3_prime_newAndOld_common$gene_name)),length(unique(a
 NaO_per<-NaO_cg/NaOg*100
 total<-BKg+BNg+NaOg
 tab_allg<-cbind(BKg,BK_cg,round(BK_per,digits=2),BNg,BN_cg,round(BN_per,digits=2),NaOg,NaO_cg,round(NaO_per,digits=2),total)
-colnames(tab_allg)<-c('both iso known','both iso known_common','Percentage','both iso new','both iso new common','Percentage','new and old','new and old common','Percentage','Total')
+colnames(tab_allg)<-c('both iso known','both iso known_common','%','both iso new','both iso new common','%','new and old','new and old common','%','Total')
 rownames(tab_allg)<-c('Alt_3_prime','Alt_5_prime','exon_skip','mutex_exons','mult_exon_skip')
 kable(tab_allg)
 ```
 
-# Section 2
-##Results for new and old group
+# Section 2 
+## Upset plots for genes containing ASEs
 
 ```{r,warning=FALSE,message=FALSE,fig.align='left'}
 ltNO=list('alt_3_prime'=as.character(unique(alt_3_prime_newAndOld_common$gene_name)),
@@ -299,6 +302,7 @@ ltNO=list('alt_3_prime'=as.character(unique(alt_3_prime_newAndOld_common$gene_na
           'mult_exon_skip'=as.character(unique(mult_exon_skip_newAndOld_common$gene_name)),
           'mutex_exons'=as.character(unique(mutex_exons_newAndOld_common$gene_name)))
 UpSetR::upset(fromList(ltNO),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+grid.text("Overlap for genes containing common ASE for new+old",x = 0.7, y=0.95, gp=gpar(fontsize=8))
 
 
 ltBK=list('alt_3_prime'=as.character(unique(alt_3_prime_both_known_common$gene_name)),
@@ -307,6 +311,7 @@ ltBK=list('alt_3_prime'=as.character(unique(alt_3_prime_both_known_common$gene_n
           'mult_exon_skip'=as.character(unique(mult_exon_skip_both_known_common$gene_name)),
            'mutex_exons'=as.character(unique(mutex_exons_both_known_common$gene_name)))
 UpSetR::upset(fromList(ltBK),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+grid.text("Overlap for genes containing common ASE for old+old",x = 0.7, y=0.95, gp=gpar(fontsize=8))
 
 ltBN=list('alt_3_prime'=as.character(unique(alt_3_prime_both_new_common$gene_name)),
           'alt_5_prime'=as.character(unique(alt_5_prime_both_new_common$gene_name)),
@@ -314,14 +319,22 @@ ltBN=list('alt_3_prime'=as.character(unique(alt_3_prime_both_new_common$gene_nam
                   'mult_exon_skip'=as.character(unique(mult_exon_skip_both_new_common$gene_name)),
                    'mutex_exons'=as.character(unique(mutex_exons_both_new_common$gene_name)))
 UpSetR::upset(fromList(ltBN),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+grid.text("Overlap for genes containing common ASE for new+new",x = 0.7, y=0.95, gp=gpar(fontsize=8))
 
 list_BN<-unique(c(as.character(unique(alt_3_prime_both_new_common$gene_name)),as.character(unique(alt_5_prime_both_new_common$gene_name)),as.character(unique(exon_skip_both_new_common$gene_name)),as.character(unique(mult_exon_skip_both_new_common$gene_name)),as.character(unique(mutex_exons_both_new_common$gene_name))))
+writeLines(list_BN, paste(spl_path,'/BN_common_genes.txt',sep=''))
 
 list_BK<-unique(c(as.character(unique(alt_3_prime_both_known_common$gene_name)),as.character(unique(alt_5_prime_both_known_common$gene_name)),as.character(unique(exon_skip_both_known_common$gene_name)),as.character(unique(mult_exon_skip_both_known_common$gene_name)),as.character(unique(mutex_exons_both_known_common$gene_name))))
+writeLines(list_BK, paste(spl_path,'/BK_common_genes.txt',sep=''))
+
 
 list_NAO<-unique(c(as.character(unique(alt_3_prime_newAndOld_common$gene_name)),as.character(unique(alt_5_prime_newAndOld_common$gene_name)),as.character(unique(exon_skip_newAndOld_common$gene_name)),as.character(unique(mult_exon_skip_newAndOld_common$gene_name)),as.character(unique(mutex_exons_newAndOld_common$gene_name))))
+writeLines(list_NAO, paste(spl_path,'/NaO_common_genes.txt',sep=''))
+
 ```
 
+# Section 3
+## Venn diagrams showing genes overlap between groups
 
 ```{r,warning=FALSE,message=FALSE,fig.align='left'}
 
@@ -330,7 +343,7 @@ futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 ven<-venn.diagram(x=list('newAndOld'=unique(mutex_exons_newAndOld_common$gene_name),
                    'both_new'=unique(mutex_exons_both_new_common$gene_name),
                   'both_known'=unique(mutex_exons_both_known_common$gene_name)),
-                      main= 'Mutually exclusive',
+                      main= 'Mutually exclusive exons',
                       filename=NULL,
                       fill =c("yellow","lightgreen",
                               "mediumorchid"),output=TRUE,imagetype='png')
@@ -370,11 +383,10 @@ ven<-venn.diagram(x=list('newAndOld'=unique(mult_exon_skip_newAndOld_common$gene
 render.venn.diagram(ven)
 ```
 
-\newpage
+# Section 4 
+## Upset plots for GO terms
 
-#Results for new/new and old/old groups
-
-```{r,warning=FALSE,message=FALSE,fig.align='left'}
+```{r,warning=FALSE,message=FALSE,fig.align='left', include=FALSE}
 th_GO<-config$TH_GO
 gtf.file<-config$ANNOTATION
 gtf.gr<-rtracklayer::import(gtf.file) # creates a GRanges object
@@ -442,14 +454,16 @@ for (event in c('alt_3_prime','alt_5_prime','exon_skip','mult_exon_skip','mutex_
       i=i+1
       colnames(allRes)[6]<-'p-value'
       kable(allRes[,c(1,2,6)],caption=paste(name_main,th_GO,method,sep=' '))
+      write.csv(allRes[,c(1,2,6,7)],paste(spl_path,'/',event,'_',type,'_',th_GO,'_',method,'.csv',sep=''))
+
       }
     }
   }
 }
 
 ```
-\newpage
-# Upset plots for both known and unknown
+
+
 ```{r,warning=FALSE,message=FALSE,fig.align='left'}
 BP_BK<-list('alt_3_prime'=alt_3_prime_both_known_common_BP$GO.ID,
             'alt_5_prime'=alt_5_prime_both_known_common_BP$GO.ID,
@@ -457,17 +471,20 @@ BP_BK<-list('alt_3_prime'=alt_3_prime_both_known_common_BP$GO.ID,
             'mult_exon_skip'=mult_exon_skip_both_known_common_BP$GO.ID,
             'mutex_exons'=mutex_exons_both_known_common_BP$GO.ID)
 UpSetR::upset(fromList(BP_BK),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE) 
-
+grid.text("BP terms overlap for old+old",x = 0.7, y=0.95, gp=gpar(fontsize=8))
 BP_BK_i<-intersect(alt_3_prime_both_known_common_BP$Term,intersect(alt_5_prime_both_known_common_BP$Term,intersect(exon_skip_both_known_common_BP$Term,intersect(mutex_exons_both_known_common_BP$Term,mult_exon_skip_both_known_common_BP$Term))))
+writeLines(BP_BK_i, paste(spl_path,'/BP_BK_common.txt',sep=''))
+
 
 CC_BK<-list('alt_3_prime'=alt_3_prime_both_known_common_CC$GO.ID,'alt_5_prime'=alt_5_prime_both_known_common_CC$GO.ID,
        'exon_skip'=exon_skip_both_known_common_CC$GO.ID,
        'mult_exon_skip'=mult_exon_skip_both_known_common_CC$GO.ID,
        'mutex_exons'=mutex_exons_both_known_common_CC$GO.ID)
 UpSetR::upset(fromList(CC_BK),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
-
+grid.text("CC terms overlap for old+old",x = 0.7, y=0.95, gp=gpar(fontsize=8))
 CC_BK_i<-intersect(alt_3_prime_both_known_common_CC$Term,intersect(alt_5_prime_both_known_common_CC$Term,intersect(exon_skip_both_known_common_CC$Term,intersect(mutex_exons_both_known_common_CC$Term,mult_exon_skip_both_known_common_CC$Term))))
 intersect(alt_5_prime_both_known_common_CC$Term,intersect(exon_skip_both_known_common_CC$Term,mutex_exons_both_known_common_CC$Term))
+writeLines(CC_BK_i, paste(spl_path,'/CC_BK_common.txt',sep=''))
 
 
 MF_BK<-list('alt_3_prime'=alt_3_prime_both_known_common_MF$GO.ID,'alt_5_prime'=alt_5_prime_both_known_common_MF$GO.ID,
@@ -475,7 +492,9 @@ MF_BK<-list('alt_3_prime'=alt_3_prime_both_known_common_MF$GO.ID,'alt_5_prime'=a
        'mult_exon_skip'=mult_exon_skip_both_known_common_MF$GO.ID,
        'mutex_exons'=mutex_exons_both_known_common_MF$GO.ID)
 UpSetR::upset(fromList(MF_BK),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+grid.text("MF terms overlap for old+old",x = 0.7, y=0.95, gp=gpar(fontsize=8))
 MF_BK_i<-intersect(alt_3_prime_both_known_common_MF$Term,intersect(alt_5_prime_both_known_common_MF$Term,intersect(exon_skip_both_known_common_MF$Term,intersect(mutex_exons_both_known_common_MF$Term,mult_exon_skip_both_known_common_MF$Term))))
+writeLines(MF_BK_i, paste(spl_path,'/MF_BK_common.txt',sep=''))
 
 
 BP_BN<-list('alt_3_prime'=alt_3_prime_both_new_common_BP$GO.ID,'alt_5_prime'=alt_5_prime_both_new_common_BP$GO.ID,
@@ -483,23 +502,31 @@ BP_BN<-list('alt_3_prime'=alt_3_prime_both_new_common_BP$GO.ID,'alt_5_prime'=alt
        'mult_exon_skip'=mult_exon_skip_both_new_common_BP$GO.ID,
        'mutex_exons'=mutex_exons_both_new_common_BP$GO.ID)
 UpSetR::upset(fromList(BP_BN),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+grid.text("BP terms overlap for new+new",x = 0.7, y=0.95, gp=gpar(fontsize=8))
 BP_BN_i<-intersect(alt_3_prime_both_new_common_BP$Term,intersect(alt_5_prime_both_new_common_BP$Term,intersect(exon_skip_both_new_common_BP$Term,intersect(mutex_exons_both_new_common_BP$Term,mult_exon_skip_both_new_common_BP$Term))))
+writeLines(BP_BN_i, paste(spl_path,'/BP_BN_common.txt',sep=''))
 
 CC_BN<-list('alt_3_prime'=alt_3_prime_both_new_common_CC$GO.ID,'alt_5_prime'=alt_5_prime_both_new_common_CC$GO.ID,
        'exon_skip'=exon_skip_both_new_common_CC$GO.ID,
        'mult_exon_skip'=mult_exon_skip_both_new_common_CC$GO.ID,
        'mutex_exons'=mutex_exons_both_new_common_CC$GO.ID)
 UpSetR::upset(fromList(CC_BN),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+grid.text("CC terms overlap for new+new",x = 0.7, y=0.95, gp=gpar(fontsize=8))
+
 CC_BN_i<-intersect(alt_3_prime_both_new_common_CC$Term,intersect(alt_5_prime_both_new_common_CC$Term,intersect(exon_skip_both_new_common_CC$Term,intersect(mutex_exons_both_new_common_CC$Term,mult_exon_skip_both_new_common_CC$Term))))
+writeLines(CC_BN_i, paste(spl_path,'/CC_BN_common.txt',sep=''))
+
 
 MF_BN<-list('alt_3_prime'=alt_3_prime_both_new_common_MF$GO.ID,'alt_5_prime'=alt_5_prime_both_new_common_MF$GO.ID,
        'exon_skip'=exon_skip_both_new_common_MF$GO.ID,
        'mult_exon_skip'=mult_exon_skip_both_new_common_MF$GO.ID,
        'mutex_exons'=mutex_exons_both_new_common_MF$GO.ID)
 UpSetR::upset(fromList(MF_BN),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
-MF_BN_i<-intersect(alt_3_prime_both_new_common_MF$Term,intersect(alt_5_prime_both_new_common_MF$Term,intersect(exon_skip_both_new_common_MF$Term,intersect(mutex_exons_both_new_common_MF$Term,mult_exon_skip_both_new_common_MF$Term))))
+grid.text("MF terms overlap for new+new",x = 0.7, y=0.95, gp=gpar(fontsize=8))
 
-MF_NO_i<-intersect(alt_3_prime_newAndOld_common_MF$Term,intersect(alt_5_prime_both_new_common_MF$Term,intersect(exon_skip_both_new_common_MF$Term,intersect(mutex_exons_both_new_common_MF$Term,mult_exon_skip_both_new_common_MF$Term))))
+MF_BN_i<-intersect(alt_3_prime_both_new_common_MF$Term,intersect(alt_5_prime_both_new_common_MF$Term,intersect(exon_skip_both_new_common_MF$Term,intersect(mutex_exons_both_new_common_MF$Term,mult_exon_skip_both_new_common_MF$Term))))
+writeLines(MF_BN_i, paste(spl_path,'/MF_BN_common.txt',sep=''))
+
 
 BP_ON<-list('alt_3_prime'=alt_3_prime_newAndOld_common_BP$GO.ID,'alt_5_prime'=alt_5_prime_newAndOld_common_BP$GO.ID,
        'exon_skip'=exon_skip_newAndOld_common_BP$GO.ID,
@@ -507,7 +534,10 @@ BP_ON<-list('alt_3_prime'=alt_3_prime_newAndOld_common_BP$GO.ID,'alt_5_prime'=al
        'mutex_exons'=mutex_exons_newAndOld_common_BP$GO.ID)
 
 UpSetR::upset(fromList(BP_ON),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+grid.text("BP terms overlap for old+new",x = 0.7, y=0.95, gp=gpar(fontsize=8))
+
 BP_ON_i<-intersect(alt_3_prime_newAndOld_common_BP$Term,intersect(alt_5_prime_newAndOld_common_BP$Term,intersect(exon_skip_newAndOld_common_BP$Term,intersect(mutex_exons_newAndOld_common_BP$Term,mult_exon_skip_newAndOld_common_BP$Term))))
+writeLines(BP_ON_i, paste(spl_path,'/BP_ON_common.txt',sep=''))
 
 CC_ON<-list('alt_3_prime'=alt_3_prime_newAndOld_common_CC$GO.ID,'alt_5_prime'=alt_5_prime_newAndOld_common_CC$GO.ID,
        'exon_skip'=exon_skip_newAndOld_common_CC$GO.ID,
@@ -515,7 +545,10 @@ CC_ON<-list('alt_3_prime'=alt_3_prime_newAndOld_common_CC$GO.ID,'alt_5_prime'=al
        'mutex_exons'=mutex_exons_newAndOld_common_CC$GO.ID)
 
 UpSetR::upset(fromList(CC_ON),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+grid.text("CC terms overlap for old+new",x = 0.7, y=0.95, gp=gpar(fontsize=8))
+
 CC_ON_i<-intersect(alt_3_prime_newAndOld_common_CC$Term,intersect(alt_5_prime_newAndOld_common_CC$Term,intersect(exon_skip_newAndOld_common_CC$Term,intersect(mutex_exons_newAndOld_common_CC$Term,mult_exon_skip_newAndOld_common_CC$Term))))
+writeLines(CC_ON_i, paste(spl_path,'/CC_ON_common.txt',sep=''))
 
 MF_ON<-list('alt_3_prime'=alt_3_prime_newAndOld_common_MF$GO.ID,'alt_5_prime'=alt_5_prime_newAndOld_common_MF$GO.ID,
        'exon_skip'=exon_skip_newAndOld_common_MF$GO.ID,
@@ -523,17 +556,16 @@ MF_ON<-list('alt_3_prime'=alt_3_prime_newAndOld_common_MF$GO.ID,'alt_5_prime'=al
        'mutex_exons'=mutex_exons_newAndOld_common_MF$GO.ID)
 
  UpSetR::upset(fromList(MF_ON),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
+ grid.text("MF terms overlap for old+new",x = 0.7, y=0.95, gp=gpar(fontsize=8))
+MF_NO_i<-intersect(alt_3_prime_newAndOld_common_MF$Term,intersect(alt_5_prime_both_new_common_MF$Term,intersect(exon_skip_both_new_common_MF$Term,intersect(mutex_exons_both_new_common_MF$Term,mult_exon_skip_both_new_common_MF$Term))))
+writeLines(MF_ON_i, paste(spl_path,'/MF_ON_common.txt',sep=''))
 
 
-MF_ON_i<-intersect(alt_3_prime_newAndOld_common_MF$Term,intersect(alt_5_prime_newAndOld_common_MF$Term,intersect(exon_skip_newAndOld_common_MF$Term,intersect(mutex_exons_newAndOld_common_MF$Term,mult_exon_skip_newAndOld_common_MF$Term))))
-
-MF_NO_i<-intersect(alt_3_prime_newAndOld_common_MF$Term,intersect(alt_5_prime_newAndOld_common_MF$Term,intersect(exon_skip_newAndOld_common_MF$Term,intersect(mutex_exons_newAndOld_common_MF$Term,mult_exon_skip_newAndOld_common_MF$Term))))
 ```
 
-\newpage
 
-#Results for old+old/OO+ON/OO+ON+NN
-```{r,warning=FALSE,message=FALSE,fig.align='left'}
+
+```{r,warning=FALSE,message=FALSE,fig.align='left',include=FALSE}
 th_GO<-config$TH_GO
 geneList<-genes_GTF
 
@@ -641,7 +673,7 @@ for (event in c('alt_3_prime','alt_5_prime','exon_skip','mult_exon_skip','mutex_
 
 ```
 
-```{r fig.align='left', message=FALSE, r,warning=FALSE}
+```{r fig.align='left', message=FALSE, include=FALSE,warning=FALSE}
 for (event in events)
 {
   i=1

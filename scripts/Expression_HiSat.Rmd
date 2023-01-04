@@ -26,6 +26,8 @@ notInstalled <- which( !listOfBiocPackages %in% rownames(installed.packages()) )
 if( length(notInstalled) ) {
     BiocManager::install(listOfBiocPackages[ notInstalled ])
 }
+lapply(listOfBiocPackages,library, character.only=TRUE)
+lapply(packages,require, character.only=TRUE)
 
 path_configs<-params$inpath
 #opts_knit$set(root.dir = path)
