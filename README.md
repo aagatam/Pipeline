@@ -6,6 +6,7 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis.
 
 ## Requirements
  - `conda` for building the environment
+ - `[interproscan](https://interproscan-docs.readthedocs.io/en/latest/UserDocs.html)` for finding protein domains
 
 ## 1. Installation
 ### 1. Clone the repository
