@@ -39,6 +39,13 @@ COUNTER: StringTie
 
 ## Bisbbe path
 BB_PATH : /home/agata/Documents/Work/Pipeline/scripts/bisbee
+## Desired release for bisbee
+RELEASE: 104
+
+TH_SAMPLES: 4
+TH_STD: 0.2
+TH_PSI: 0.1
+TH_GO: 0.01
 
 ## analyse proteins?
 InterPro: "yes"

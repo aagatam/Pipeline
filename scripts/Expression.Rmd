@@ -2,7 +2,7 @@
 title: "Neuropathic pain in mouse analysis"
 output: pdf_document
 params:
-  inpath: ""
+  inpath: "../configs"
 ---
 
 ```{r "setup", include=FALSE}
@@ -15,23 +15,33 @@ knitr::opts_chunk$set(echo=FALSE)
 
 ```{r,warning=FALSE,message=FALSE,include=FALSE}
 
-library(gplots)
-library(ggplot2)
-library(stats)
-library(limma)
-library(edgeR)
-library(DESeq2)
-library(biomaRt) ## local user instalation
-library(sva)
-library(gridExtra)
-library(VennDiagram) ## local user instalation
-library(umap) ## local user instalat
-library(RColorBrewer)
-library(KEGGprofile)
-library(veccompare)
-library(gplots)
-setwd(path)
+packages<-c("knitr","RColorBrewer","VennDiagram","veccompare","ggplot2","gplots","yaml","gridExtra")
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE,repos = "http://cran.us.r-project.org")
+      library(x, character.only = TRUE)
+    }
+  }
+)
+if (!require("BiocManager", quietly = TRUE))
+   { install.packages("BiocManager",repos = "http://cran.us.r-project.org")
+BiocManager::install()}
+listOfBiocPackages<-c("topGO","org.Mm.eg.db","biomaRt","limma","DESeq2","edgeR","sva")
+notInstalled <- which( !listOfBiocPackages %in% rownames(installed.packages()) )
+## check there's still something left to install
+if( length(notInstalled) ) {
+    BiocManager::install(listOfBiocPackages[ notInstalled ])
+}
+path_configs<-params$inpath
 
+#opts_knit$set(root.dir = path)
+knitr::opts_chunk$set(echo=FALSE)
+
+```
+
+```{r,warning=FALSE,message=FALSE,include=FALSE}
 ###########
 #Functions
 ###########
@@ -409,8 +419,7 @@ heatmap.2(as.matrix(fsvaobj$db[topVar,samples_new]),
 
 #####KEGG
 #####topGO
-library(topGO)
-library(org.Mm.eg.db)
+
 
 # topDiffGenes <- function (allGene, thr=0.05)
 # {

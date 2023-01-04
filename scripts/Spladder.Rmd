@@ -1,5 +1,5 @@
 ---
-title: "SplAdder for neuropathy- figures and tables"
+title: "SplAdder results - figures and tables"
 output:
   pdf_document: default
 params:
@@ -23,7 +23,7 @@ package.check <- lapply(
 )
 if (!require("BiocManager", quietly = TRUE))
    { install.packages("BiocManager",repos = "http://cran.us.r-project.org")
-BiocManager::install(version = "3.10")}
+BiocManager::install()}
 listOfBiocPackages<-c("topGO","GOfuncR","annotate","biomaRt","GOfuncR")
 notInstalled <- which( !listOfBiocPackages %in% rownames(installed.packages()) )
 ## check there's still something left to install
@@ -373,7 +373,7 @@ render.venn.diagram(ven)
 #Results for new/new and old/old groups
 
 ```{r,warning=FALSE,message=FALSE,fig.align='left'}
-th_GO<-condig$TH_GO
+th_GO<-config$TH_GO
 gtf.file<-config$ANNOTATION
 gtf.gr<-rtracklayer::import(gtf.file) # creates a GRanges object
 gtf.df = as.data.frame(gtf.gr)

@@ -35,6 +35,7 @@ rule bisbeeProt:
         BB = bb_path + "/prot",
         genome = config["GENOME"],
         name= bisbee_out + "/{event}",
+        release = config['RELEASE']
         EV = "{event}"
     shell:
-        "python {params.BB}/build.py {input.CSV} {params.EV} 9 {params.name} 104 {params.genome} "
+        "python {params.BB}/build.py {input.CSV} {params.EV} 9 {params.name} {params.release} {params.genome} "
