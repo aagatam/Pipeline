@@ -11,7 +11,7 @@ params:
 ```{r "setup", include=FALSE}
 #sudo apt-get install -y libcurl4-openssl-dev <-for curlr
 #sudo apt-get install -y libxml2-dev <-for XML
-packages<-c("knitr","RColorBrewer","VennDiagram","veccompare","ggplot2","pals","dplyr","matrixStats","gplots","UpSetR","XML","yaml", "tmod")
+packages<-c("knitr","RColorBrewer","VennDiagram","veccompare","ggplot2","pals","dplyr","matrixStats","gplots","UpSetR","XML","yaml", "tmod","tidyverse","gridExtra")
 package.check <- lapply(
   packages,
   FUN = function(x) {

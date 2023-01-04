@@ -8,7 +8,7 @@ PROJECT: Test
 INPUTPATH: /home/agata/Documents/Work/Pipeline/Test_data
 
 ## the meta file describing the experiment settings
-METAFILE: configs/Description.csv
+METAFILE: configs/Description_N.csv
 
 ## paths for intermediate and final outputs
 FINALOUTPUT: /home/agata/Documents/Work/Pipeline/Output

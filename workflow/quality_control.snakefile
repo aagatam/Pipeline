@@ -1,6 +1,6 @@
 import pandas as pd
 configfile: "configs/config.yaml"
-samples = pd.read_csv(config["METAFILE"], sep = ';', header = 0)['Sample']
+samples = pd.read_csv(config["METAFILE"], sep = ',', header = 0)['Group']
 end = config["END"]
 compressed = config["COMPRESSED"]
 final_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome"

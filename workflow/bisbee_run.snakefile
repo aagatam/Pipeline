@@ -1,7 +1,7 @@
 import pandas as pd
 configfile: "configs/config.yaml"
 
-samples = pd.read_csv(config["METAFILE"], sep = ';', header = 0)['Sample']
+samples = pd.read_csv(config["METAFILE"], sep = ',', header = 0)['Group']
 events = ['alt_3prime','alt_5prime','exon_skip','intron_retention','mult_exon_skip','mutex_exons']
 splad_out = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome/spladder"
 bisbee_out = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome/bisbee"

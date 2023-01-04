@@ -1,7 +1,7 @@
 import pandas as pd
 configfile: "configs/config.yaml"
 
-samples = pd.read_csv(config["METAFILE"], sep = ';', header = 0)['Sample']
+samples = pd.read_csv(config["METAFILE"], sep = ',', header = 0)['Group']
 
 indexes = list(range(1, 9))
 
@@ -16,7 +16,10 @@ input_path = config["INPUTPATH"]
 rule end:
     input:
         GTF = expand(final_path + "/countFile/{sample}/{sample}.gtf",sample=samples),
-        report = final_path + "/report_align_count.html"
+        report = final_path + "/report_align_count.html",
+        gene_mat = final_path + "/Hisat_results/gene_count_matrix.csv",
+        trans_mat = final_path + "/Hisat_results/transcript_count_matrix.csv"
+
 rule indexGenome:
     input:
         genome = config["GENOME"]
@@ -109,6 +112,17 @@ rule featureCount:
         GTF = final_path + "/countFile/{sample}/{sample}.gtf"
     run:
         shell("nice stringtie {input.sort} -G {input.annotation} -o {output.GTF} -A {output.GENE} -p 8 -e -B")
+
+rule prepDE:
+    input:
+        GTF = expand(final_path + "/countFile/{sample}/{sample}.gtf",sample=samples)
+    params:
+        GTF = final_path + "/countFile"
+    output:
+        gene_mat = final_path + "/Hisat_results/gene_count_matrix.csv",
+        trans_mat = final_path + "/Hisat_results/transcript_count_matrix.csv"
+    shell:
+        "python ../scripts/prepDE.pr -i {params.GTF} -g {output.gene_mat} -t {output.trans_mat} "
 
 rule summaryReport:
     input:
