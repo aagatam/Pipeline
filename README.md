@@ -35,7 +35,7 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis.
  - `snakemake --cores all -p -s workflow/spladder_run.snakefile`
 ### 5. Alternative events analysis with Bisbee
 Install desired species release, for example:
- - `pyensembl install --release 104 --species musmusculus`
+ - `pyensembl install --release 104 --species musmusculus`\
  THEN
  - `snakemake --cores all -p -s workflow/bisbee_run.snakefile`
 ### 6. Protein domains affected by ASEs with InterProScan
