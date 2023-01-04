@@ -19,12 +19,17 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis.
  You need to adjust two files `configs/config.yaml` and `configs/Description.csv` to match your data. All the fields in first config are explained within the original file. Currently only analysis for samples with equal repetitions is available.
 
 ## 3. Running the pipeline.
+## Quality control, assebmle and quantification.
 ### 1. Quality contol on raw reads
  - `snakemake -p -s workflow/quality_control.snakefile`
 ### 2. Alignment to genome
  - `snakemake -p -s workflow/align_HiSat2.snakefile`
 ### 3. Alignment to transcriptome
  - `snakemake -p -s workflow/align_kallisto.snakefile`
+
+## Alternative splicing and effects analysis
+### To perform ASEs analysis alignment to genome must be done!
+
 ### 4. Alternative splicing discovery with Spladder and analysis with R
  - `snakemake -p -s workflow/spladder_run.snakefile`
 ### 5. Alternative events analysis with Bisbee
