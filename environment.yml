@@ -27,12 +27,13 @@ dependencies:
   - kallisto=0.48
   - hisat2= 2.2.1
   - stringtie=2.2.1
+  - pyensembl
 # #   - bioconductor-biomart
   - bioconductor-rtracklayer
   - pip:
     - spladder==2.4.3
     - numpy
-    - pyensembl
+  #  - pyensembl
     - Bio
     - pandas
 #export LANG=en_US.utf-8

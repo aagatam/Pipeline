@@ -34,6 +34,9 @@ if( length(notInstalled) ) {
 }
 lapply(listOfBiocPackages,library, character.only=TRUE)
 lapply(packages,require, character.only=TRUE)
+py_install("pandas")
+py_install("pyensembl",pip=TRUE)
+
 
 knitr::opts_chunk$set(echo=FALSE)
 
@@ -75,16 +78,18 @@ for (file in files)
 files<-list.files(bb_path,pattern='*final.fasta')
 for (file in files)
 {
-  FASTA<-read.fasta(file = file, seqtype = c("AA"), as.string = FALSE)
+  FASTA<-read.fasta(file = paste(bb_path,'/',file,sep=''), seqtype = c("AA"), as.string = FALSE)
   assign(paste(strsplit(file,"[.]")[[1]][1],'fasta',sep='_'),FASTA)
 }
 
 no_extract<-c(4,4,4,5,4)
+events_interpro<-c('alt_3prime','alt_5prime','exon_skip','mult_exon_skip','mutex_exons')
+
 i<-1
 for (event in events)
 {
-  inter<-get(paste(event,'interpro',sep='_'))
-  FASTA<-get(paste(event,'fasta',sep='_'))
+  inter<-get(paste(events_interpro[i],'interpro',sep='_'))
+  FASTA<-get(paste(events_interpro[i],'fasta',sep='_'))
   names_FASTA<-strsplit(unlist(getAnnot(FASTA)),' ')
   names_FASTA_df<-data.frame(t(sapply(names_FASTA,c)),stringsAsFactors=FALSE)
   names_FASTA_df[,1]<-sub('>','',names_FASTA_df[,1])
@@ -229,7 +234,7 @@ new_coord=get_new_coord(matching_isoform,event_coords,coding_coord) #<-brakuje j
 
 ```{r,include=FALSE,warning=FALSE,message=FALSE,echo=FALSE}
 #Plots
-load(paste(spl_path,'To_plots.RData',sep='\\'))
+load(paste(spl_path,'To_plots.RData',sep='/'))
 ah <- AnnotationHub()
 ahdb<-AnnotationHub::query(ah, "EnsDb.Mmusculus.v104")
 edb<-ahdb[[1]]
@@ -298,7 +303,6 @@ chrom<-df$seqnames[1]
 ```
 
 ```{r,warning=FALSE,message=FALSE,echo=FALSE}
-#load('/Users/agatamuszynska/Documents/Work/Neuropathy_all_GRcM39/Results_no_PSI_th/To_plots.RData')
 
 add_events<-tab_merged_NN_ON[which(tab_merged_NN_ON$gene_name==ensemble2gene$external_gene_name[1]),]
 nth_element <- function(vector, starting_position, n) { 

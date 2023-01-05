@@ -389,9 +389,10 @@ render.venn.diagram(ven)
 ```{r,warning=FALSE,message=FALSE,fig.align='left', include=FALSE}
 #prepare for InterProScan
 events_interpro<-c('alt_3prime','alt_5prime','exon_skip','mult_exon_skip','mutex_exons')
+i=1
 for (event in events)
 {
-  i=1
+
   bisbee<-get(paste(event,'_bisbee',sep=''))
   bisbee_prot<-get(paste(event,'_bisbee_pep',sep=''))
   for (group in c('_both_new','_both_known','_newAndOld'))
