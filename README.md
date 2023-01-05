@@ -1,14 +1,15 @@
 # High- throughput data analysis pipeline
-
+# Table of contents
+1. [Requirements](#requiresments)
 ## How does this work?
 Snakeamke wrapper scripts (located in the `workflow` folder) enable for automatic RNA-seq data analysis in terms of quality control, assembly, quantification, gene ontology, differential gene expression and alternative splicing and it's effects on protein level. Additional 'RMarkdown' script enables final visualization for AS.
 Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline accepts either .fastq files or .fastq.dsrc files.
 
-## Requirements
+## 1. Requirements <a name="requirements"></a>
  - `conda` for building the environment
  - [`interproscan`](https://interproscan-docs.readthedocs.io/en/latest/UserDocs.html) for finding protein domains
 
-## 1. Installation
+## 2. Installation
 ### 1. Clone the repository
  - `git clone www.github.com/aagatam/Pipeline.git`
 ### 2. Create a conda environment
@@ -16,10 +17,10 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
 ### 3. Activate environment
  - `conda activate Pipeline`
 
-## 2. Config files configuration
+## 3. Config files configuration
  You need to adjust two files `configs/config.yaml` and `configs/Description.csv` to match your data. All the fields in first config are explained within the original file. Currently only analysis for samples with equal repetitions is available.
 
-## 3. Running the pipeline.
+## 4. Running the pipeline.
 ## Quality control, assebmle and quantification.
 ### 1. Quality contol on raw reads
  - `snakemake --cores all -p -s workflow/quality_control.snakefile`
@@ -93,7 +94,7 @@ Install desired species release, for example:
 #### **Outputs**
    - Plots.pdf file with two plots for a given event. One for the whole transcript, and a close-up on the second one.
 
-## Differential gene expression and Gene Ontology analysis for RNA-seq
+## 8. Differential gene expression and Gene Ontology analysis for RNA-seq
  - `R -e "rmarkdown::render('scripts/Expression_HiSat.Rmd')"`
 #### **Outputs**
   - Expression_HiSat.pdf report in `scripts` folder
@@ -104,7 +105,7 @@ Install desired species release, for example:
 #### **Outputs**
    - Expression_Kallisto.pdf report in `scripts` folder
 
-## Differential gene expression and Gene Ontology for Illumina microarrays
+## 9. Differential gene expression and Gene Ontology for Illumina microarrays
  - `R -e "rmarkdown::render('scripts/Expression_Illumina_ microarrays.Rmd')"`
 #### **Outputs**
    - Expression_Illumina_ microarrays.pdf report in `scripts` folder

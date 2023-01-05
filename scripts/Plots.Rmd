@@ -739,7 +739,7 @@ GR_original<-GeneRegionTrack(trt, name = "Original",background.title="brown",col
 Prot_track<-AnnotationTrack(dmns2_nodup,shape = "box",group=dmns2_nodup$grp,id=dmns2_nodup$id,
                                                       just.group="left",stacking='squish', groupAnnotation="id",
                                                       name = "Interpro protein domains",background.title="brown")
-BAM_file<- "/bi/ala/scratch/amuszynska/Rasflow/Output_GRCm39/Pain_new_genome/genome/bamFileSort/out.bam"
+BAM_file<-config$BAM
 
 alTrack <- AlignmentsTrack(BAM_file, isPaired = F, background.title="brown")
 
