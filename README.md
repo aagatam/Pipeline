@@ -5,6 +5,8 @@
 3. [Configuration](#config)
 4. [Running the pipeline](#run)
   1. [QC raw reads](#qc)
+  2. [Alignment to genome](#genome)
+
 ## How does this work?
 Snakeamke wrapper scripts (located in the `workflow` folder) enable for automatic RNA-seq data analysis in terms of quality control, assembly, quantification, gene ontology, differential gene expression and alternative splicing and it's effects on protein level. Additional 'RMarkdown' script enables final visualization for AS.
 Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline accepts either .fastq files or .fastq.dsrc files.
@@ -26,13 +28,13 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
 
 ## 4. Running the pipeline. <a name="run"></a>
 ## Quality control, assebmle and quantification.
-### 1. Quality contol on raw reads . <a name="qc"></a>
+### 1. Quality contol on raw reads. <a name="qc"></a>
  - `snakemake --cores all -p -s workflow/quality_control.snakefile`
 #### **Outputs**
   - In `FINALOUTPUT`/`PROJECT`/fastqc:
     - summary report_quality_control.html,
     - report for each sample
-### 2. Alignment to genome
+### 2. Alignment to genome  <a name="genome"></a>
  - `snakemake --cores all -p -s workflow/align_HiSat2.snakefile`
 #### **Outputs**
   - In `FINALOUTPUT`/`PROJECT`/genome:
