@@ -45,6 +45,8 @@ Description<-read.table(paste(path_configs,'/Description.csv',sep=''),header=TRU
 config<-read_yaml(paste(path_configs,'/config.yaml',sep=''),fileEncoding = "UTF-8")
 spl_path<-paste(config$FINALOUTPUT,config$PROJECT,'genome/spladder',sep='/')
 bb_path<-paste(config$FINALOUTPUT,config$PROJECT,'genome/bisbee',sep='/')
+dir.create(file.path(spl_path, 'Script_output'), showWarnings = FALSE)
+
 
 group='Spladder'
 files<-list.files(path=spl_path,pattern='.txt$')
@@ -322,14 +324,14 @@ UpSetR::upset(fromList(ltBN),sets=c("exon_skip","alt_3_prime","alt_5_prime","mul
 grid.text("Overlap for genes containing common ASE for new+new",x = 0.7, y=0.95, gp=gpar(fontsize=8))
 
 list_BN<-unique(c(as.character(unique(alt_3_prime_both_new_common$gene_name)),as.character(unique(alt_5_prime_both_new_common$gene_name)),as.character(unique(exon_skip_both_new_common$gene_name)),as.character(unique(mult_exon_skip_both_new_common$gene_name)),as.character(unique(mutex_exons_both_new_common$gene_name))))
-writeLines(list_BN, paste(spl_path,'/BN_common_genes.txt',sep=''))
+writeLines(list_BN, paste(spl_path,'/Script_output/BN_common_genes.txt',sep=''))
 
 list_BK<-unique(c(as.character(unique(alt_3_prime_both_known_common$gene_name)),as.character(unique(alt_5_prime_both_known_common$gene_name)),as.character(unique(exon_skip_both_known_common$gene_name)),as.character(unique(mult_exon_skip_both_known_common$gene_name)),as.character(unique(mutex_exons_both_known_common$gene_name))))
-writeLines(list_BK, paste(spl_path,'/BK_common_genes.txt',sep=''))
+writeLines(list_BK, paste(spl_path,'/Script_output/BK_common_genes.txt',sep=''))
 
 
 list_NAO<-unique(c(as.character(unique(alt_3_prime_newAndOld_common$gene_name)),as.character(unique(alt_5_prime_newAndOld_common$gene_name)),as.character(unique(exon_skip_newAndOld_common$gene_name)),as.character(unique(mult_exon_skip_newAndOld_common$gene_name)),as.character(unique(mutex_exons_newAndOld_common$gene_name))))
-writeLines(list_NAO, paste(spl_path,'/NaO_common_genes.txt',sep=''))
+writeLines(list_NAO, paste(spl_path,'/Script_output/NaO_common_genes.txt',sep=''))
 
 ```
 
@@ -454,7 +456,7 @@ for (event in c('alt_3_prime','alt_5_prime','exon_skip','mult_exon_skip','mutex_
       i=i+1
       colnames(allRes)[6]<-'p-value'
       kable(allRes[,c(1,2,6)],caption=paste(name_main,th_GO,method,sep=' '))
-      write.csv(allRes[,c(1,2,6,7)],paste(spl_path,'/',event,'_',type,'_',th_GO,'_',method,'.csv',sep=''))
+      write.csv(allRes[,c(1,2,6,7)],paste(spl_path,'/Script_output/',event,'_',type,'_',th_GO,'_',method,'.csv',sep=''))
 
       }
     }
@@ -473,7 +475,7 @@ BP_BK<-list('alt_3_prime'=alt_3_prime_both_known_common_BP$GO.ID,
 UpSetR::upset(fromList(BP_BK),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE) 
 grid.text("BP terms overlap for old+old",x = 0.7, y=0.95, gp=gpar(fontsize=8))
 BP_BK_i<-intersect(alt_3_prime_both_known_common_BP$Term,intersect(alt_5_prime_both_known_common_BP$Term,intersect(exon_skip_both_known_common_BP$Term,intersect(mutex_exons_both_known_common_BP$Term,mult_exon_skip_both_known_common_BP$Term))))
-writeLines(BP_BK_i, paste(spl_path,'/BP_BK_common.txt',sep=''))
+writeLines(BP_BK_i, paste(spl_path,'/Script_output/BP_BK_common.txt',sep=''))
 
 
 CC_BK<-list('alt_3_prime'=alt_3_prime_both_known_common_CC$GO.ID,'alt_5_prime'=alt_5_prime_both_known_common_CC$GO.ID,
@@ -484,7 +486,7 @@ UpSetR::upset(fromList(CC_BK),sets=c("exon_skip","alt_3_prime","alt_5_prime","mu
 grid.text("CC terms overlap for old+old",x = 0.7, y=0.95, gp=gpar(fontsize=8))
 CC_BK_i<-intersect(alt_3_prime_both_known_common_CC$Term,intersect(alt_5_prime_both_known_common_CC$Term,intersect(exon_skip_both_known_common_CC$Term,intersect(mutex_exons_both_known_common_CC$Term,mult_exon_skip_both_known_common_CC$Term))))
 intersect(alt_5_prime_both_known_common_CC$Term,intersect(exon_skip_both_known_common_CC$Term,mutex_exons_both_known_common_CC$Term))
-writeLines(CC_BK_i, paste(spl_path,'/CC_BK_common.txt',sep=''))
+writeLines(CC_BK_i, paste(spl_path,'/Script_output/CC_BK_common.txt',sep=''))
 
 
 MF_BK<-list('alt_3_prime'=alt_3_prime_both_known_common_MF$GO.ID,'alt_5_prime'=alt_5_prime_both_known_common_MF$GO.ID,
@@ -494,7 +496,7 @@ MF_BK<-list('alt_3_prime'=alt_3_prime_both_known_common_MF$GO.ID,'alt_5_prime'=a
 UpSetR::upset(fromList(MF_BK),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
 grid.text("MF terms overlap for old+old",x = 0.7, y=0.95, gp=gpar(fontsize=8))
 MF_BK_i<-intersect(alt_3_prime_both_known_common_MF$Term,intersect(alt_5_prime_both_known_common_MF$Term,intersect(exon_skip_both_known_common_MF$Term,intersect(mutex_exons_both_known_common_MF$Term,mult_exon_skip_both_known_common_MF$Term))))
-writeLines(MF_BK_i, paste(spl_path,'/MF_BK_common.txt',sep=''))
+writeLines(MF_BK_i, paste(spl_path,'/Script_output/MF_BK_common.txt',sep=''))
 
 
 BP_BN<-list('alt_3_prime'=alt_3_prime_both_new_common_BP$GO.ID,'alt_5_prime'=alt_5_prime_both_new_common_BP$GO.ID,
@@ -504,7 +506,7 @@ BP_BN<-list('alt_3_prime'=alt_3_prime_both_new_common_BP$GO.ID,'alt_5_prime'=alt
 UpSetR::upset(fromList(BP_BN),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
 grid.text("BP terms overlap for new+new",x = 0.7, y=0.95, gp=gpar(fontsize=8))
 BP_BN_i<-intersect(alt_3_prime_both_new_common_BP$Term,intersect(alt_5_prime_both_new_common_BP$Term,intersect(exon_skip_both_new_common_BP$Term,intersect(mutex_exons_both_new_common_BP$Term,mult_exon_skip_both_new_common_BP$Term))))
-writeLines(BP_BN_i, paste(spl_path,'/BP_BN_common.txt',sep=''))
+writeLines(BP_BN_i, paste(spl_path,'/Script_output/BP_BN_common.txt',sep=''))
 
 CC_BN<-list('alt_3_prime'=alt_3_prime_both_new_common_CC$GO.ID,'alt_5_prime'=alt_5_prime_both_new_common_CC$GO.ID,
        'exon_skip'=exon_skip_both_new_common_CC$GO.ID,
@@ -514,7 +516,7 @@ UpSetR::upset(fromList(CC_BN),sets=c("exon_skip","alt_3_prime","alt_5_prime","mu
 grid.text("CC terms overlap for new+new",x = 0.7, y=0.95, gp=gpar(fontsize=8))
 
 CC_BN_i<-intersect(alt_3_prime_both_new_common_CC$Term,intersect(alt_5_prime_both_new_common_CC$Term,intersect(exon_skip_both_new_common_CC$Term,intersect(mutex_exons_both_new_common_CC$Term,mult_exon_skip_both_new_common_CC$Term))))
-writeLines(CC_BN_i, paste(spl_path,'/CC_BN_common.txt',sep=''))
+writeLines(CC_BN_i, paste(spl_path,'/Script_output/CC_BN_common.txt',sep=''))
 
 
 MF_BN<-list('alt_3_prime'=alt_3_prime_both_new_common_MF$GO.ID,'alt_5_prime'=alt_5_prime_both_new_common_MF$GO.ID,
@@ -525,7 +527,7 @@ UpSetR::upset(fromList(MF_BN),sets=c("exon_skip","alt_3_prime","alt_5_prime","mu
 grid.text("MF terms overlap for new+new",x = 0.7, y=0.95, gp=gpar(fontsize=8))
 
 MF_BN_i<-intersect(alt_3_prime_both_new_common_MF$Term,intersect(alt_5_prime_both_new_common_MF$Term,intersect(exon_skip_both_new_common_MF$Term,intersect(mutex_exons_both_new_common_MF$Term,mult_exon_skip_both_new_common_MF$Term))))
-writeLines(MF_BN_i, paste(spl_path,'/MF_BN_common.txt',sep=''))
+writeLines(MF_BN_i, paste(spl_path,'/Script_output/MF_BN_common.txt',sep=''))
 
 
 BP_ON<-list('alt_3_prime'=alt_3_prime_newAndOld_common_BP$GO.ID,'alt_5_prime'=alt_5_prime_newAndOld_common_BP$GO.ID,
@@ -537,7 +539,7 @@ UpSetR::upset(fromList(BP_ON),sets=c("exon_skip","alt_3_prime","alt_5_prime","mu
 grid.text("BP terms overlap for old+new",x = 0.7, y=0.95, gp=gpar(fontsize=8))
 
 BP_ON_i<-intersect(alt_3_prime_newAndOld_common_BP$Term,intersect(alt_5_prime_newAndOld_common_BP$Term,intersect(exon_skip_newAndOld_common_BP$Term,intersect(mutex_exons_newAndOld_common_BP$Term,mult_exon_skip_newAndOld_common_BP$Term))))
-writeLines(BP_ON_i, paste(spl_path,'/BP_ON_common.txt',sep=''))
+writeLines(BP_ON_i, paste(spl_path,'/Script_output/BP_ON_common.txt',sep=''))
 
 CC_ON<-list('alt_3_prime'=alt_3_prime_newAndOld_common_CC$GO.ID,'alt_5_prime'=alt_5_prime_newAndOld_common_CC$GO.ID,
        'exon_skip'=exon_skip_newAndOld_common_CC$GO.ID,
@@ -548,7 +550,7 @@ UpSetR::upset(fromList(CC_ON),sets=c("exon_skip","alt_3_prime","alt_5_prime","mu
 grid.text("CC terms overlap for old+new",x = 0.7, y=0.95, gp=gpar(fontsize=8))
 
 CC_ON_i<-intersect(alt_3_prime_newAndOld_common_CC$Term,intersect(alt_5_prime_newAndOld_common_CC$Term,intersect(exon_skip_newAndOld_common_CC$Term,intersect(mutex_exons_newAndOld_common_CC$Term,mult_exon_skip_newAndOld_common_CC$Term))))
-writeLines(CC_ON_i, paste(spl_path,'/CC_ON_common.txt',sep=''))
+writeLines(CC_ON_i, paste(spl_path,'/Script_output/CC_ON_common.txt',sep=''))
 
 MF_ON<-list('alt_3_prime'=alt_3_prime_newAndOld_common_MF$GO.ID,'alt_5_prime'=alt_5_prime_newAndOld_common_MF$GO.ID,
        'exon_skip'=exon_skip_newAndOld_common_MF$GO.ID,
@@ -557,8 +559,8 @@ MF_ON<-list('alt_3_prime'=alt_3_prime_newAndOld_common_MF$GO.ID,'alt_5_prime'=al
 
  UpSetR::upset(fromList(MF_ON),sets=c("exon_skip","alt_3_prime","alt_5_prime","mult_exon_skip","mutex_exons"),keep.order=TRUE)
  grid.text("MF terms overlap for old+new",x = 0.7, y=0.95, gp=gpar(fontsize=8))
-MF_NO_i<-intersect(alt_3_prime_newAndOld_common_MF$Term,intersect(alt_5_prime_both_new_common_MF$Term,intersect(exon_skip_both_new_common_MF$Term,intersect(mutex_exons_both_new_common_MF$Term,mult_exon_skip_both_new_common_MF$Term))))
-writeLines(MF_ON_i, paste(spl_path,'/MF_ON_common.txt',sep=''))
+MF_ON_i<-intersect(alt_3_prime_newAndOld_common_MF$Term,intersect(alt_5_prime_both_new_common_MF$Term,intersect(exon_skip_both_new_common_MF$Term,intersect(mutex_exons_both_new_common_MF$Term,mult_exon_skip_both_new_common_MF$Term))))
+writeLines(MF_ON_i, paste(spl_path,'/Script_output/MF_ON_common.txt',sep=''))
 
 
 ```
@@ -761,7 +763,7 @@ for (event in events)
 
   g_new<-grid.arrange(grobs=plot_list,nrow=3,ncol=1)
   ggsave(plot = g_new, width = 20, height = 20, dpi = 300,
-         filename=paste(spl_path,'/GO_',
+         filename=paste(spl_path,'/Script_output/GO_',
                         event,'.pdf',sep=''))
 
 }

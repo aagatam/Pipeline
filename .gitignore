@@ -8,3 +8,4 @@ logs/
 configs/Description_N.csv
 .DS_store
 .snakemake
+Spladder.pdf
