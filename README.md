@@ -1,6 +1,10 @@
 # High- throughput data analysis pipeline
 # Table of contents
-1. [Requirements](#requiresments)
+1. [Requirements](#requirements)
+2. [Installation](#installation)
+3. [Configuration](#config)
+4. [Running the pipeline](#run)
+  1. [QC raw reads](#qc)
 ## How does this work?
 Snakeamke wrapper scripts (located in the `workflow` folder) enable for automatic RNA-seq data analysis in terms of quality control, assembly, quantification, gene ontology, differential gene expression and alternative splicing and it's effects on protein level. Additional 'RMarkdown' script enables final visualization for AS.
 Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline accepts either .fastq files or .fastq.dsrc files.
@@ -9,7 +13,7 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
  - `conda` for building the environment
  - [`interproscan`](https://interproscan-docs.readthedocs.io/en/latest/UserDocs.html) for finding protein domains
 
-## 2. Installation
+## 2. Installation <a name="installation"></a>
 ### 1. Clone the repository
  - `git clone www.github.com/aagatam/Pipeline.git`
 ### 2. Create a conda environment
@@ -17,12 +21,12 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
 ### 3. Activate environment
  - `conda activate Pipeline`
 
-## 3. Config files configuration
+## 3. Config files configuration <a name="config"></a>
  You need to adjust two files `configs/config.yaml` and `configs/Description.csv` to match your data. All the fields in first config are explained within the original file. Currently only analysis for samples with equal repetitions is available.
 
-## 4. Running the pipeline.
+## 4. Running the pipeline. <a name="run"></a>
 ## Quality control, assebmle and quantification.
-### 1. Quality contol on raw reads
+### 1. Quality contol on raw reads .<a name="qc"></a>
  - `snakemake --cores all -p -s workflow/quality_control.snakefile`
 #### **Outputs**
   - In `FINALOUTPUT`/`PROJECT`/fastqc:
