@@ -2,7 +2,7 @@
 
 ## How does this work?
 Snakeamke wrapper scripts (located in the `workflow` folder) enable for automatic RNA-seq data analysis in terms of quality control, assembly, quantification, gene ontology, differential gene expression and alternative splicing and it's effects on protein level. Additional 'RMarkdown' script enables final visualization for AS.
-Additional Rmarkdown script allowas for Illumina microarrays analysis.
+Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline accepts either .fastq files or .fastq.dsrc files.
 
 ## Requirements
  - `conda` for building the environment
@@ -20,16 +20,16 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis.
  You need to adjust two files `configs/config.yaml` and `configs/Description.csv` to match your data. All the fields in first config are explained within the original file. Currently only analysis for samples with equal repetitions is available.
 
 ## 3. Running the pipeline.
-## Quality control, assebmle and quantification. Pipeline accepts either .fastq files or .fastq.dsrc files.
+## Quality control, assebmle and quantification.
 ### 1. Quality contol on raw reads
- - `snakemake --cores all -p -s workflow/quality_control.snakefile`
- **Outputs**
+ - `snakemake --cores all -p -s workflow/quality_control.snakefile` \
+### **Outputs**
    - In `FINALOUTPUT`/`PROJECT`/fastqc:
     - summary report_quality_control.html,
     - report for each sample
 ### 2. Alignment to genome
- - `snakemake --cores all -p -s workflow/align_HiSat2.snakefile`
- **Outputs**
+ - `snakemake --cores all -p -s workflow/align_HiSat2.snakefile` \
+**Outputs**
    - In `FINALOUTPUT`/`PROJECT`/genome:
     - multiqc summary report  report_align_count.html,
     - results prepared for analysis with R in `Hisat_results` folder,
