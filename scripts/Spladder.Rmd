@@ -46,6 +46,7 @@ config<-read_yaml(paste(path_configs,'/config.yaml',sep=''),fileEncoding = "UTF-
 spl_path<-paste(config$FINALOUTPUT,config$PROJECT,'genome/spladder',sep='/')
 bb_path<-paste(config$FINALOUTPUT,config$PROJECT,'genome/bisbee',sep='/')
 dir.create(file.path(spl_path, 'Script_output'), showWarnings = FALSE)
+dir.create(file.path(bb_path, 'Filtered'), showWarnings = FALSE)
 
 
 group='Spladder'
@@ -400,13 +401,13 @@ for (event in events)
     Bisbee_filtered_prot<-bisbee_prot[bisbee_prot$event_id%in%spladder$event_id,]
     name_filtered_prot<-paste(event,group,'_bisbee_prot_filtered',sep='')
     assign(name_filtered_prot,Bisbee_filtered_prot)
-    setwd(bb_path)
+    setwd(paste(bb_path,'/Filtered',sep=''))
     write.csv(Bisbee_filtered,name_filtered)
     write.csv(Bisbee_filtered_prot,name_filtered_prot)
     Bisbee_filtered$event_id<-sub('(\\.)(\\d+$)','\\_\\2',Bisbee_filtered$event_id)
     pasta<-paste('>.+',paste(Bisbee_filtered$event_id,collapse='\\D.+\\n[A-Z,\\n]+|>.+'),'\\D.+\\n[A-Z,\\n]+',sep='')
     pasta<-paste(paste(Bisbee_filtered$event_id,collapse='\\D\n'),'\\D',sep='')
-    cat(pasta,file=paste(name_filtered,'_to_grep_small.txt',sep=''),sep='')
+    cat(pasta,file=paste(bb_path,'/',name_filtered,'_to_grep.txt',sep=''),sep='')
   }
 }
 
@@ -470,8 +471,8 @@ tab$gene_name<-rownames(tab)
 tab_BN$gene_name<-ensemble2gene$external_gene_name
 tab_merged_NN_ON<-merge(tab, tab_BN,by.x='gene_name',by.y='gene_name')
 colnames(tab_merged_NN_ON)<-c('gene_name','ON_events','effect_orf','effect_aa','NN_events')
-save(tab_merged_NN_ON,alt_3_prime_newAndOld_bisbee_filtered, alt_3_prime_both_new_bisbee_filtered,alt_5_prime_newAndOld_bisbee_filtered,alt_5_prime_both_new_bisbee_filtered,mutex_exons_both_new_bisbee_filtered,mutex_exons_newAndOld_bisbee_filtered,mult_exon_skip_both_new_bisbee_filtered,mult_exon_skip_newAndOld_bisbee_filtered,exon_skip_both_new_bisbee_filtered,exon_skip_newAndOld_bisbee_filtered,file=paste(spl_path,'To_plots.RData',sep='\\'))
-
+save(tab_merged_NN_ON,alt_3_prime_newAndOld_bisbee_filtered, alt_3_prime_both_new_bisbee_filtered,alt_5_prime_newAndOld_bisbee_filtered,alt_5_prime_both_new_bisbee_filtered,mutex_exons_both_new_bisbee_filtered,mutex_exons_newAndOld_bisbee_filtered,mult_exon_skip_both_new_bisbee_filtered,mult_exon_skip_newAndOld_bisbee_filtered,exon_skip_both_new_bisbee_filtered,exon_skip_newAndOld_bisbee_filtered,file=paste(spl_path,'To_plots.RData',sep='/'))
+write.csv(tab_merged_NN_ON,file=paste(spl_path,'To_plots.csv',sep='/'))
 ```
 
 # Section 4 
