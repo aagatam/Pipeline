@@ -30,24 +30,19 @@ ATTRIBUTE: gene_id  # the attribute used in annotation file. It's usually "gene_
 ## number of cores
 NCORE: 6
 
-## aligner Hisat2/Kallisto
-ALIGNER: Hisat2
-
-## tool for feature count
-COUNTER: StringTie
-
-
 ## Bisbbe path
 BB_PATH : /home/agata/Documents/Work/Pipeline/scripts/bisbee
 ## Desired release for bisbee
 RELEASE: 104
 
+#Thresholds for Spladder analysis with Rmarkdown
 TH_SAMPLES: 4
 TH_STD: 0.2
 TH_PSI: 0.1
 TH_GO: 0.01
 
-## analyse proteins?
-InterPro: "yes"
+#BAM file for events visualization- either for particular sample or concatenated BAM (must be indexed!)
+BAM: /home/agata/Documents/Work/Pipeline_old/Output/Test/genome/bamFileSort/CMV_PNSL_10.1.sort.bam 
+
 ## InterProScan path
 IP_PATH: /home/agata/Documents/Work/InterPro/interproscan-5.55-88.0

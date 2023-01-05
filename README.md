@@ -52,7 +52,7 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
 ### To perform ASEs analysis alignment to genome must be done!
 
 ### 4. Alternative splicing discovery with Spladder and analysis with R
-This part will index all BAM files, run Spladder and analyse its output files with Rmarkdown script producing report and also bunch of csv files with results and files needed for further analysis with InterProscan and visualization.
+This part will index all BAM files, run Spladder and analyse its output files with Rmarkdown script producing report and also bunch of csv files with results and files needed for further analysis with InterProscan and visualization. Depending on dataset size, this step might take a few hours, especially during first run when necessary libraries are downloaded.
  - `snakemake --cores all -p -s workflow/spladder_run.snakefile`
 #### **Outputs**
   - In `FINALOUTPUT`/`PROJECT`/genome/spladder:
@@ -71,7 +71,7 @@ This part will index all BAM files, run Spladder and analyse its output files wi
 
 ### 5. Alternative events analysis with Bisbee
 Install desired species release, for example:
- - `pyensembl install --release 104 --species musmusculus`\
+ - `pyensembl install --release 104 --species mouse`\
  THEN
  - `snakemake --cores all -p -s workflow/bisbee_run.snakefile`
 #### **Outputs**

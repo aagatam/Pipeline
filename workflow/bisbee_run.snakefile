@@ -2,7 +2,7 @@ import pandas as pd
 configfile: "configs/config.yaml"
 
 samples = pd.read_csv(config["METAFILE"], sep = ',', header = 0)['Group']
-events = ['alt_3prime','alt_5prime','exon_skip','intron_retention','mult_exon_skip','mutex_exons']
+events = ['alt_3prime','alt_5prime','exon_skip','mult_exon_skip','mutex_exons']#'intron_retention',
 splad_out = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome/spladder"
 bisbee_out = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome/bisbee"
 bb_path = config["BB_PATH"]
@@ -11,7 +11,7 @@ rule end:
     input:
         expand(bisbee_out + "/{event}.effects.csv",event=events),
         expand(bisbee_out + "/{event}.peptides.csv",event=events),
-        expand(bisbee_out + "/{event}.changeSeq.fasta",event=events)
+        #expand(bisbee_out + "/{event}.changeSeq.fasta",event=events)
 
 
 rule bisbeePrep:
@@ -35,7 +35,7 @@ rule bisbeeProt:
         BB = bb_path + "/prot",
         genome = config["GENOME"],
         name= bisbee_out + "/{event}",
-        release = config['RELEASE']
+        release = config['RELEASE'],
         EV = "{event}"
     shell:
         "python {params.BB}/build.py {input.CSV} {params.EV} 9 {params.name} {params.release} {params.genome} "

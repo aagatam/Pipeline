@@ -32,15 +32,15 @@ ensembl=pyensembl.EnsemblRelease(ensemble_release,'mus_musculus')
 ref=Bio.SeqIO.to_dict(Bio.SeqIO.parse(ref_fasta,'fasta'))
 
 ###read coordinates table
-if event_type=="IR":
+if event_type=="intron_retention":
  col_types={"contig":str,"event_id":str,"gene":str,"exon1_end":int,"exon2_start":int,"event_jid":str}
-elif event_type=="ES":
+elif event_type=="exon_skip":
  col_types={"contig":str,"event_id":str,"gene":str,"exon_pre_end":int,"exon_start":int,"exon_end":int,"exon_aft_start":int,"event_jid":str}
-elif event_type=="MULT":
+elif event_type=="mult_exon_skip":
  col_types={"contig":str,"event_id":str,"gene":str,"exon_pre_end":int,"exon1_start":int,"exon1_end":int,"exon2_start":int,"exon2_end":int,"exon_aft_start":int,"event_jid":str}
-elif event_type=="MUT":
+elif event_type=="mutex_exons":
  col_types={"contig":str,"event_id":str,"gene":str,"exon_pre_end":int,"exon1_start":int,"exon1_end":int,"exon2_start":int,"exon2_end":int,"exon_aft_start":int,"event_jid":str}
-elif event_type=="A3" or event_type=="A5":
+elif event_type=="alt_3prime" or event_type=="alt_5prime":
  col_types={"contig":str,"event_id":str,"gene":str,"strand":str,"exon_const_start":int,"exon_const_end":int,"exon_alt1_start":int,"exon_alt1_end":int,"exon_alt2_start":int,"exon_alt2_end":int,"event_jid":str}
 elif event_type=="ALL":
  col_types={"contig":str,"event_id":str,"gene":str,"strand":str,"event_jid":str}
@@ -51,19 +51,19 @@ else:
 events_table=pd.read_csv(events_file,usecols=col_types.keys(),dtype=col_types)
 events_table=events_table.assign(coding_transcript_effect=None,top_effect_transcript=None,effect_type=None,iso1_pc=None,iso2_pc=None,other_pc=None,iso1_nc=None,iso2_nc=None,other_nc=None)
 topEffect_list=[]
-wt_file='.'.join([out_name,event_type,"refSeq.fasta"])
+wt_file='.'.join([out_name,"refSeq.fasta"])
 if os.path.exists(wt_file):
  os.remove(wt_file)
 wt_fasta=open(wt_file,"a+")
-novel_file='.'.join([out_name,event_type,"altSeq.fasta"])
-novel_file_change='.'.join([out_name,event_type,"changeSeq.fasta"])
-novel_file_change_sub='.'.join([out_name,event_type,"changeSeq_subst.fasta"])
+novel_file='.'.join([out_name,"altSeq.fasta"])
+novel_file_change='.'.join([out_name,"changeSeq.fasta"])
+novel_file_change_sub='.'.join([out_name,"changeSeq_subst.fasta"])
 if os.path.exists(novel_file):
  os.remove(novel_file)
 novel_fasta=open(novel_file,"a+")
 novel_fasta_change=open(novel_file_change,"a+")
 novel_fasta_change_sub=open(novel_file_change_sub,"a+")
-peptides_file='.'.join([out_name,event_type,"peptides.csv"])
+peptides_file='.'.join([out_name,"peptides.csv"])
 if os.path.exists(peptides_file):
  os.remove(peptides_file)
 peptides_table=open(peptides_file,"a+")

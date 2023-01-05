@@ -12,7 +12,7 @@ params:
 bindingIsLocked("params", env = .GlobalEnv)
 unlockBinding("params", env = .GlobalEnv)
 
-packages<-c("knitr","dplyr","yaml","data.table","seqinr","stringr","gsubfun","reticulate")
+packages<-c("knitr","dplyr","yaml","data.table","seqinr","stringr","gsubfn","reticulate")
 package.check <- lapply(
   packages,
   FUN = function(x) {
@@ -26,7 +26,7 @@ package.check <- lapply(
 if (!require("BiocManager", quietly = TRUE))
    { install.packages("BiocManager",repos = "http://cran.us.r-project.org")
 BiocManager::install()}
-listOfBiocPackages<-c("biomaRt","AnnotationHub","Gviz","")
+listOfBiocPackages<-c("biomaRt","AnnotationHub","Gviz")
 notInstalled <- which( !listOfBiocPackages %in% rownames(installed.packages()) )
 ## check there's still something left to install
 if( length(notInstalled) ) {
@@ -46,7 +46,7 @@ ip_path<-paste(config$FINALOUTPUT,config$PROJECT,'genome/InterProScan',sep='/')
 ```{r,warning=FALSE,message=FALSE,include=FALSE}
 
 files2<-list.files(path=bb_path,pattern='*effects.csv')
-files3<-list.files(pattern='*peptides.csv')
+files3<-list.files(path=bb_path,pattern='*peptides.csv')
 
 events<- c('alt_3_prime','alt_5_prime','exon_skip','mult_exon_skip','mutex_exons')
 names_files2<-events
@@ -68,7 +68,7 @@ files<-list.files(ip_path,pattern='.tsv$')
 for (file in files)
 {
   
-  inter<-read.table(paste(ip_path, file,sep='\\'), sep = '\t', header = FALSE, fill=TRUE,col.names = paste0("V",seq_len(14)),quote = "")
+  inter<-read.table(paste(ip_path, file,sep='/'), sep = '\t', header = FALSE, fill=TRUE,col.names = paste0("V",seq_len(14)),quote = "")
   assign(paste(strsplit(file,"[.]")[[1]][1],'interpro',sep='_'),inter)
 }
 
