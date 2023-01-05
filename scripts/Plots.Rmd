@@ -1,0 +1,799 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+params:
+  event_type: alt_5_prime
+  event: alt_5prime_242
+  inpath: "../configs"
+---
+
+```{r setup, include=FALSE,warning=FALSE,message=FALSE,echo=FALSE}
+bindingIsLocked("params", env = .GlobalEnv)
+unlockBinding("params", env = .GlobalEnv)
+
+packages<-c("knitr","dplyr","yaml","data.table","seqinr","stringr","gsubfun","reticulate")
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE,repos = "http://cran.us.r-project.org")
+      library(x, character.only = TRUE)
+    }
+  }
+)
+
+if (!require("BiocManager", quietly = TRUE))
+   { install.packages("BiocManager",repos = "http://cran.us.r-project.org")
+BiocManager::install()}
+listOfBiocPackages<-c("biomaRt","AnnotationHub","Gviz","")
+notInstalled <- which( !listOfBiocPackages %in% rownames(installed.packages()) )
+## check there's still something left to install
+if( length(notInstalled) ) {
+    BiocManager::install(listOfBiocPackages[ notInstalled ])
+}
+lapply(listOfBiocPackages,library, character.only=TRUE)
+lapply(packages,require, character.only=TRUE)
+
+knitr::opts_chunk$set(echo=FALSE)
+
+path_configs<-params$inpath
+config<-read_yaml(paste(path_configs,'/config.yaml',sep=''),fileEncoding = "UTF-8")
+spl_path<-paste(config$FINALOUTPUT,config$PROJECT,'genome/spladder',sep='/')
+bb_path<-paste(config$FINALOUTPUT,config$PROJECT,'genome/bisbee',sep='/')
+ip_path<-paste(config$FINALOUTPUT,config$PROJECT,'genome/InterProScan',sep='/')
+```
+```{r,warning=FALSE,message=FALSE,include=FALSE}
+
+files2<-list.files(path=bb_path,pattern='*effects.csv')
+files3<-list.files(pattern='*peptides.csv')
+
+events<- c('alt_3_prime','alt_5_prime','exon_skip','mult_exon_skip','mutex_exons')
+names_files2<-events
+i=1
+for ( i in c(1:5))
+{
+  name<-paste(names_files2[i],'_bisbee',sep='')
+  file_read<-read.table(paste(bb_path,'/',files2[i],sep=''),header=TRUE,sep=',')
+  namep<-paste(names_files2[i],'_bisbee_pep',sep='')
+  file_readp<-read.table(paste(path=bb_path,'/',files3[i],sep=''),header=TRUE,sep=',')
+  file_read$refIso<-file_readp$refIsoform[match(file_read$event_id,file_readp$event_id)]
+  
+  assign(name,file_read)
+  assign(namep,file_readp)
+}
+
+files<-list.files(ip_path,pattern='.tsv$')
+
+for (file in files)
+{
+  
+  inter<-read.table(paste(ip_path, file,sep='\\'), sep = '\t', header = FALSE, fill=TRUE,col.names = paste0("V",seq_len(14)),quote = "")
+  assign(paste(strsplit(file,"[.]")[[1]][1],'interpro',sep='_'),inter)
+}
+
+files<-list.files(bb_path,pattern='*final.fasta')
+for (file in files)
+{
+  FASTA<-read.fasta(file = file, seqtype = c("AA"), as.string = FALSE)
+  assign(paste(strsplit(file,"[.]")[[1]][1],'fasta',sep='_'),FASTA)
+}
+
+no_extract<-c(4,4,4,5,4)
+i<-1
+for (event in events)
+{
+  inter<-get(paste(event,'interpro',sep='_'))
+  FASTA<-get(paste(event,'fasta',sep='_'))
+  names_FASTA<-strsplit(unlist(getAnnot(FASTA)),' ')
+  names_FASTA_df<-data.frame(t(sapply(names_FASTA,c)),stringsAsFactors=FALSE)
+  names_FASTA_df[,1]<-sub('>','',names_FASTA_df[,1])
+  print(length(unique(names_FASTA_df$X3)))#<- available in FASTA -Silent
+  names_FASTA_df$X7<-str_match(names_FASTA_df$X1,"ENSMUST\\d+")[,1]
+  tabs_merged<-merge(inter, names_FASTA_df[,c(1,3,4,7)],by.x='V1',by.y='X1')
+  tabs_merged$X3<-sub('ID=','',tabs_merged$X3)
+  tabs_merged[,'ISO']<-sapply(strsplit(tabs_merged$X3, "_"), "[[", no_extract[i])
+  tabs_merged$X3<-sub('_iso[1,2]','',tabs_merged$X3)
+  colnames(tabs_merged)<-c('ID','MD5','SeqLen','Db','Accession','Description','Start','Stop','E-value','Status','Date','IPAnnotAcc','IPAnnotDesc','GO','Event_ID','Effect','TranscirptID','Iso')
+  assign(paste(event,'merged',sep='_'),tabs_merged)
+  names_all<-sub('ID=','',names_FASTA_df$X3)
+  names_all<-sub('_iso[1,2]','',names_all)
+  names_all<-sub('(\\_)(\\d+$)','\\.\\2',names_all)
+  assign(paste(event,'names_all',sep='_'),names_all)
+  i<-i+1
+}
+
+
+tab_to_chose<-get(paste(params$event_type,'bisbee',sep='_')) #<- stad bierzemy junctions
+tab_to_chose_merged<-get(paste(params$event_type,'merged',sep='_')) #<-stad bierzemy reszte 
+chosen_event<-params$event #5014
+#"mult_exon_skip_5430" 'mult_exon_skip_1188'
+
+
+NO<-which(tab_to_chose$event_id==chosen_event)
+NO2<-which(tab_to_chose_merged$Event_ID==chosen_event)
+
+ev_coord<-tab_to_chose[NO,]$event_jid #<-wybrany event
+gene<-tab_to_chose[NO,]$gene #<-gen dla tego eventu
+ipr_acc<-tab_to_chose_merged[NO2,]$IPAnnotAcc
+tr_id<-tab_to_chose_merged[NO2,]$TranscirptID[1]
+
+# Get ENSMP id from Interpro id
+mart<-useMart(biomart="ENSEMBL_MART_ENSEMBL",
+              dataset='mmusculus_gene_ensembl',
+              host='useast.ensembl.org')
+#uniProt <- useMart("unimart", dataset="uniprot")
+
+ensemble2gene <- getBM(attributes=c("ensembl_transcript_id","external_gene_name",
+                                    #'uniprot_gn_symbol',
+                                    #'uniprot_gn_id',
+                                    "interpro","ensembl_peptide_id"),
+                       filters = c("ensembl_transcript_id"),
+                       values= list(tr_id),
+                       mart = mart)
+
+```
+
+```{python,include=FALSE,warning=FALSE,message=FALSE,echo=FALSE}
+
+###########################################
+#Python preprocessing
+###########################################
+def get_new_coord(matching_isoform,event_coords,old_coord):
+  novel_junc=event_coords.loc[event_coords.isoform!=matching_isoform]
+  overlap=find_overlap(old_coord,[event_coords.start.min(),event_coords.end.max()])
+  if novel_junc.size>0 and overlap.any():
+    new_coord=pd.DataFrame(columns=["start","end"])
+    new_coord=new_coord.append({'start':old_coord[overlap].start.iloc[0],'end':novel_junc.start.iloc[0]},ignore_index=True)
+    new_coord=new_coord.append(pd.DataFrame({'start':novel_junc.end.iloc[0:-1].values,'end':novel_junc.start.iloc[1:].values}),ignore_index=True)
+    new_coord=new_coord.append({'start':novel_junc.end.iloc[-1],'end':old_coord[overlap].end.iloc[-1]},ignore_index=True)
+    new_coord=new_coord.append(old_coord.loc[overlap==False],ignore_index=True).sort_values(by="start")
+  elif overlap.any():
+    new_coord=pd.DataFrame(columns=["start","end"])
+    new_coord=new_coord.append({'start':old_coord[overlap].start.iloc[0],'end':old_coord[overlap].end.iloc[-1]},ignore_index=True)
+    new_coord=new_coord.append(old_coord.loc[overlap==False],ignore_index=True).sort_values(by="start")
+  else:
+    new_coord=old_coord
+  return new_coord
+
+def jid_to_coords(event_jid):
+  event_coords=pd.DataFrame(columns=("isoform","start","end"))
+  iso1_coords=event_jid.split("g.")[1].split(">")[0].split('_')
+  for coord in iso1_coords:
+    if not coord=="NONE":
+      event_coords=event_coords.append({"isoform":"iso1","start":int(coord.split('j')[0]),"end":int(coord.split('j')[1])},ignore_index=True)
+      iso2_coords=event_jid.split("g.")[1].split(">")[1].split("[")[0].split('_')
+  for coord in iso2_coords:
+    if not coord=="NONE":
+      event_coords=event_coords.append({"isoform":"iso2","start":int(coord.split('j')[0]),"end":int(coord.split('j')[1])},ignore_index=True)
+  return event_coords
+
+def find_matching_transcripts(ensembl,gene_id,event_coords):
+  try:
+    transcript_ids=ensembl.transcript_ids_of_gene_id(gene_id.split('.')[0])
+  except:
+    print('Warning: ' + gene_id[0:15] + ' not found')
+    transcript_ids=[]
+  transcript_table=pd.DataFrame(columns=["coding","matching_isoform"],index=transcript_ids)
+  for tid in transcript_ids:
+    transcript=ensembl.transcript_by_id(tid)
+    if transcript.biotype!='protein_coding' or not transcript.contains_stop_codon or not transcript.contains_start_codon:
+      transcript_table.loc[tid,"coding"]=False
+    else:
+      transcript_table.loc[tid,"coding"]=True
+    transcript_table.loc[tid,"matching_isoform"]=get_matching_isoform(transcript,event_coords)
+  return transcript_table
+
+def get_matching_isoform(transcript,event_coords):
+  exons=pd.DataFrame(transcript.exon_intervals,columns=["start","end"]).sort_values(by="start")
+  event_region=[event_coords.start.min(),event_coords.end.max()]
+  exons=exons[find_overlap(exons,event_region)]
+  junctions=pd.DataFrame(columns=["start","end"])
+  junctions["end"]=exons.start[1:].values
+  junctions["start"]=exons.end[0:-1].values
+  if junctions.equals(event_coords.loc[event_coords.isoform=="iso2",["start","end"]].reset_index(drop=True).astype(int)):
+    matching_isoform="iso2"
+  elif sum(event_coords.isoform=="iso1")==0:
+    if len(exons.start)>0:
+      if event_coords.start[0]>exons.start.iloc[0] and event_coords.end[0]<exons.end.iloc[0]:
+        matching_isoform="iso1"
+      else:
+        matching_isoform="none"
+    else:
+      matching_isoform="none"
+  elif junctions.equals(event_coords.loc[event_coords.isoform=="iso1",["start","end"]].reset_index(drop=True).astype(int)):
+    matching_isoform="iso1"
+  else:
+    matching_isoform="none"
+  return matching_isoform
+
+def find_overlap(rangeDF,coord):
+  return (coord[0]<=rangeDF.loc[:,'end']) & (coord[1]>=rangeDF.loc[:,'start'])
+
+
+import pandas as pd
+import pyensembl
+
+ensembl=pyensembl.EnsemblRelease(104,'mus_musculus')
+event_coords=jid_to_coords(r.ev_coord)
+transcript_table=find_matching_transcripts(ensembl,r.gene,event_coords) 
+transcript_table["matching_isoform"]
+matching_isoform=transcript_table.loc[r.tr_id]["matching_isoform"] #<-tutaj podaj transkrypt, który chceszf
+transcript=ensembl.transcript_by_id(r.tr_id)
+coding_coord=pd.DataFrame(transcript.coding_sequence_position_ranges,columns=['start','end'])
+coding_coord=coding_coord.append(pd.Series({'start':min(transcript.stop_codon_positions),'end':max(transcript.stop_codon_positions)}),ignore_index=True).sort_values(by="start")
+  
+new_coord=get_new_coord(matching_isoform,event_coords,coding_coord) #<-brakuje jeszcze old_coord= tu trzeba wziąć z R z trt
+
+```
+
+```{r,include=FALSE,warning=FALSE,message=FALSE,echo=FALSE}
+#Plots
+ah <- AnnotationHub()
+ahdb<-AnnotationHub::query(ah, "EnsDb.Mmusculus.v104")
+edb<-ahdb[[1]]
+
+protein <- proteins(edb, filter =ProteinIdFilter(ensemble2gene$ensembl_peptide_id),
+                columns = c("protein_id", "tx_id", listColumns(edb, "protein_domain")),
+                return.type = "AAStringSet")
+
+protein_rng <- IRanges(start = mcols(protein)$prot_dom_start,
+                   end = mcols(protein)$prot_dom_end)
+
+mcols(protein_rng) <- mcols(protein)
+protein_gnm <- proteinToGenome(protein_rng, edb, id = "protein_id")
+
+new_domains<-tab_to_chose_merged[which(tab_to_chose_merged$Event_ID==chosen_event),]
+new_domains_plot<-new_domains[,c(5,7,8,17)]
+new_domains_plot$width<-new_domains_plot$Stop-new_domains_plot$Start
+new_domains_plot$proteinId<-ensemble2gene$ensembl_peptide_id[1]
+colnames(new_domains_plot)<-c("protein_domain_id","start","stop", 'transcriptID','width','proteinID')
+new_domains_plot_irg<-IRanges(start=new_domains_plot$start,end=new_domains_plot$stop)
+mcols(new_domains_plot_irg)<-new_domains_plot[,c(1,4,6)]
+protein_gnm_new<-proteinToGenome(new_domains_plot_irg,edb,id='proteinID')
+
+## Define a genome axis track
+gat <- GenomeAxisTrack(background.tile="brown")
+
+## Get the transcript ID:
+txid <- protein_gnm[[1]]$tx_id[1]
+
+## Get a GRanges for the transcript
+trt <- getGeneRegionTrackForGviz(edb, filter = TxIdFilter(txid))
+#trt_new <- getGeneRegionTrackForGviz(edb, filter = TxIdFilter("ENSMUST00000153076"))
+
+dt = data.table(as.data.frame(trt))
+#dim(py$new_coord)
+df <- data.frame(matrix(unlist(py$new_coord), nrow=dim(py$new_coord)[1], byrow=FALSE),stringsAsFactors=FALSE)
+df$width<-df$X2-df$X1
+colnames(df)<-c("start","end","width")
+df$seqnames<-rep(as.character(dt$seqnames[1]),length(df$start))
+df$strand<-rep(as.character(dt$strand[1]),length(df$start))
+df$feature<-'protein_coding'
+df$transcript<-dt$transcript[1]
+colnames(dt)[11]<-'symbol_true'
+colnames(dt)[9]<-"symbol"
+dt2<-GRanges(df)
+## Define a GRanges for the mapped protein domains and add
+## metadata columns with the grouping of the ranges and the
+## IDs of the corresponding protein domains, so they can be
+## identified in the plot
+dmns <- unlist(GRangesList(protein_gnm))
+dmns$grp <- rep(1:length(protein_rng), lengths(protein_gnm))
+dmns$id <- rep(mcols(protein_rng)$protein_domain_id, lengths(protein_gnm))
+
+dmns2 <- unlist(GRangesList(protein_gnm_new))
+dmns2$grp <- rep(1:length(new_domains_plot_irg), lengths(protein_gnm_new))
+dmns2$id <- rep(mcols(new_domains_plot_irg)$protein_domain_id, lengths(protein_gnm_new))
+
+dmns2_nodup<-dmns2[!duplicated(dmns2), ]
+## Since we're using Ensembl chromosome names we have to set
+
+options(ucscChromosomeNames=FALSE)
+#alTrack <- AlignmentsTrack(BAM_file, isPaired = F, background.title="brown")
+#displayPars(alTrack) <- list(background.panel = "#FFFEDB", col = NULL)
+
+chrom<-df$seqnames[1]
+```
+
+```{r,warning=FALSE,message=FALSE,echo=FALSE}
+#load('/Users/agatamuszynska/Documents/Work/Neuropathy_all_GRcM39/Results_no_PSI_th/To_plots.RData')
+
+add_events<-tab_merged_NN_ON[which(tab_merged_NN_ON$gene_name==ensemble2gene$external_gene_name[1]),]
+nth_element <- function(vector, starting_position, n) { 
+  vector[seq(starting_position, length(vector), n)] 
+}
+if (add_events$NN_events!='')
+{
+  add_NN<-strsplit(add_events$NN_events,split=' ')[[1]][-1]
+  event_jids_NN<-c()
+  for(new in add_NN)
+  {
+    event_type<-strsplit(new,split='\\.')[[1]][1]
+    if (event_type=='exon_skip')
+    {
+      event_jid<-exon_skip_both_new_bisbee_filtered[which(exon_skip_both_new_bisbee_filtered$event_id==new),]$event_jid
+    }
+    else if (event_type=='mult_exon_skip')
+    {
+      event_jid<-mult_exon_skip_both_new_bisbee_filtered[which(mult_exon_skip_both_new_bisbee_filtered$event_id==new),]$event_jid
+    }
+    else if(event_type=='alt_3prime')
+    {
+      event_jid<-alt_3_prime_both_new_bisbee_filtered[which(alt_3_prime_both_new_bisbee_filtered$event_id==new),]$event_jid
+    }
+    else if (event_type=='alt_5prime')
+    {
+      event_jid<-alt_5_prime_both_new_bisbee_filtered[which(alt_5_prime_both_new_bisbee_filtered$event_id==new),]$event_jid
+    }
+    else if (event_type=='mutex_exons')
+    {
+      event_jid<-mutex_exons_both_new_bisbee_filtered[which(mutex_exons_both_new_bisbee_filtered$event_id==new),]$event_jid
+    }
+    event_jids_NN<-paste(event_jids_NN, event_jid, sep=' ')
+  }
+}else {event_jids_NN<-''}
+
+add_ON<-strsplit(add_events$ON_events,split=' ')[[1]][-1]
+if (length(add_ON!=1))
+{
+  event_jids_ON<-c()
+  for(new in add_ON)
+  {
+    event_type<-strsplit(new,split='\\.')[[1]][1]
+    if (event_type=='exon_skip')
+    {
+      event_jid<-exon_skip_newAndOld_bisbee_filtered[which(exon_skip_newAndOld_bisbee_filtered$event_id==new),]$event_jid
+    }
+    else if (event_type=='mult_exon_skip')
+    {
+      event_jid<-mult_exon_skip_newAndOld_bisbee_filtered[which(mult_exon_skip_newAndOld_bisbee_filtered$event_id==new),]$event_jid
+    }
+    else if(event_type=='alt_3prime')
+    {
+      event_jid<-alt_3_prime_newAndOld_bisbee_filtered[which(alt_3_prime_newAndOld_bisbee_filtered$event_id==new),]$event_jid
+    }
+    else if (event_type=='alt_5prime')
+    {
+      event_jid<-alt_5_prime_newAndOld_bisbee_filtered[which(alt_5_prime_newAndOld_bisbee_filtered$event_id==new),]$event_jid
+    }
+    else if (event_type=='mutex_exons')
+    {
+      event_jid<-mutex_exons_newAndOld_bisbee_filtered[which(mutex_exons_newAndOld_bisbee_filtered$event_id==new),]$event_jid
+    }
+    event_jids_ON<-paste(event_jids_ON, event_jid, sep=' ')
+  }
+}
+
+if (event_jids_NN!='')
+{
+event_jids_NN_strip<-strsplit(event_jids_NN,split=' ')[[1]][-1]
+event_jids_NN_strip<-sub('.+g\\.','',event_jids_NN_strip)
+type_ev<-strsplit(event_jids_NN_strip,split='\\[')
+mat_A3<-matrix(ncol=2, nrow=sum(sapply(type_ev,"[[",2)=="splA3]"))
+mat_A5<-matrix(ncol=2, nrow=sum(sapply(type_ev,"[[",2)=="splA5]"))
+
+colnames(mat_A3)<-colnames(mat_A5)<-c('Old','New')
+list_ES<-list()
+list_MULT<-list()
+list_A5<-list()
+list_MUTEX<-list()
+A3<-1
+A5<-1
+for (type in type_ev)
+{
+  if (type[2]=="splES]")
+  {
+    list_ES<-append(list_ES,strsplit(gsub('j','',str_match(type[1],'j[0-9]*_[0-9]*j')),split='_'))
+  }
+  else if (type[2]=="splMULT]" )
+  {
+   list_MULT<-append(list_MULT,list(unlist(strsplit(gsub('j','',unlist(str_match_all(type[1],'j[0-9]*_[0-9]*'))),split='_'))))
+  }
+  else if (type[2]=="splA3]" )
+  {
+   mat_A3[A3,2]<-(gsub('j','',str_match_all(type[1],'j[0-9]*$')))
+   mat_A3[A3,1]<-gsubfn('.',list('j'='','>'=''),unlist(str_match_all(type[1],'j[0-9]*>')))
+   A3<-A3+1
+  }
+  else if (type[2]=="splA5]" )
+  {
+   mat_A5[A5,1]<-(gsub('j','',str_match_all(type[1],'[0-9]*j')[[1]][1]))
+   mat_A5[A5,2]<-(gsub('j','',str_match_all(type[1],'[0-9]*j')[[1]][2]))
+   A5<-A5+1
+  }
+  else if (type[2]=="splMUT]")
+  {
+    list_MUTEX<-append(list_MUTEX, list(unlist(strsplit(gsub('j','',unlist(str_match_all(type[1],'j[0-9]*_[0-9]*'))),split='_'))))
+  }
+}
+
+
+#For multiple exon skip and exon skip- 1st is start, 2nd is end
+if(length(list_MULT)!=0)
+{
+starts_MULT<-nth_element(unlist(list_MULT),1,2)
+ends_MULT<-nth_element(unlist(list_MULT),2,2)
+}else {
+  ends_MULT<-c()
+starts_MULT<-c()
+}
+
+if (length(list_ES)!=0)
+{
+starts_ES<-nth_element(unlist(list_ES),1,2)
+ends_ES<-nth_element(unlist(list_ES),2,2)
+}else {
+    ends_ES<-c()
+    starts_ES<-c()
+}
+#For A3- find matching starts and width in ref
+if (dim(mat_A3)[1]!=0)
+{
+for (i in c(1:dim(mat_A3)[1]))
+{
+  if((as.numeric(mat_A3[i,1])-as.numeric(mat_A3[i,2]))<2)
+  {
+    mat_A3[i,]<-NA
+  }
+}
+}
+
+if(sum(is.na(mat_A3))==0 && dim(mat_A3)[1]!=0){
+starts_A3<-as.vector(mat_A3[,2])
+#which_A3<-match(c(as.numeric(mat_A3[,1])),trt@ranges@start)
+#ends_A3<-trt@ranges@start[which_A3]+trt@ranges@width[which_A3]-1
+ends_A3<-as.numeric(starts_A3)+20
+} else
+{
+  starts_A3<-c()
+  ends_A3<-c()
+}
+
+
+#For A5 - find matching end and width in ref?
+if (dim(mat_A5)[1]!=0)
+{
+for (i in c(1:dim(mat_A5)[1]))
+{
+  if((abs(as.numeric(mat_A5[i,1])-as.numeric(mat_A5[i,2])))<2)
+  {
+    mat_A5[i,]<-NA
+  }
+}
+}
+if(sum(is.na(mat_A5))==0 && dim(mat_A5)[1]!=0){
+ends_A5<-as.numeric(mat_A5[,2])
+#which_A5<-match(c(round(as.numeric(mat_A5[,1]),-1)),round(trt@ranges@start+trt@ranges@width-1,-1))
+#starts_A5<-as.numeric(mat_A5[,1])-trt@ranges@width[which_A5]
+starts_A5<-ends_A5-20
+} else
+{
+  starts_A5<-c()
+  ends_A5<-c()
+}
+
+
+#For mutex exons -
+if(length(list_MUTEX)!=0)
+{
+starts_MUTEX<-nth_element(unlist(list_MUTEX),1,2)
+ends_MUTEX<-nth_element(unlist(list_MUTEX),2,2)
+}else {
+  ends_MUTEX<-c()
+starts_MUTEX<-c()
+}
+
+starts<-c(starts_A3,starts_MULT,starts_ES,starts_A5,starts_MUTEX)
+ends<-c(ends_A3,ends_MULT,ends_ES,ends_A5,ends_MUTEX)
+wid<- as.numeric(ends)-as.numeric(starts)
+
+names_MULT<-c()
+ i=1
+for (element in list_MULT)
+{
+  #print(element)
+  rep_names<-length(element)/2
+  names_MULT<-c(names_MULT, rep(add_NN[grep('mult',add_NN)][i],rep_names))
+  i=i+1
+}
+ 
+names_MUTEX<-c()
+ i=1
+for (element in list_MUTEX)
+{
+  #print(element)
+  rep_names<-length(element)/2
+  names_MUTEX<-c(names_MUTEX, rep(add_NN[grep('mutex',add_NN)][i],rep_names))
+  i=i+1
+}
+ 
+
+if (is.null(starts_A3)==FALSE)
+{
+  names_A3<-add_NN[grep('alt_3',add_NN)]
+}else{
+  names_A3<-c()
+}
+
+if (is.null(starts_A5)==FALSE)
+{
+  names_A5<-add_NN[grep('alt_5',add_NN)]
+}else{
+  names_A5<-c()
+}
+}else{
+  starts<-c()
+  ends<-c()
+}
+
+#FOR NEW+OLD
+event_jids_ON_strip<-strsplit(event_jids_ON,split=' ')[[1]][-1]
+event_jids_ON_strip<-sub('.+g\\.','',event_jids_ON_strip)
+type_ev_ON<-strsplit(event_jids_ON_strip,split='\\[')
+mat_A3_ON<-matrix(ncol=2, nrow=sum(sapply(type_ev_ON,"[[",2)=="splA3]"))
+mat_A5_ON<-matrix(ncol=2, nrow=sum(sapply(type_ev_ON,"[[",2)=="splA5]"))
+
+colnames(mat_A3_ON)<-colnames(mat_A5_ON)<-c('Old','New')
+list_ES_ON<-list()
+list_MULT_ON<-list()
+list_A5_ON<-list()
+list_MUTEX_ON<-list()
+A3<-A5<-1
+
+for (type in type_ev_ON)
+{
+  if (type[2]=="splES]")
+  {
+    list_ES_ON<-append(list_ES_ON,strsplit(gsub('j','',str_match(type[1],'j[0-9]*_[0-9]*j')),split='_'))
+  }
+  else if (type[2]=="splMULT]" )
+  {
+   list_MULT_ON<-append(list_MULT_ON,list(unlist(strsplit(gsub('j','',unlist(str_match_all(type[1],'j[0-9]*_[0-9]*'))),split='_'))))
+  }
+  else if (type[2]=="splA3]" )
+  {
+   mat_A3_ON[A3,2]<-(gsub('j','',str_match_all(type[1],'j[0-9]*$')))
+   mat_A3_ON[A3,1]<-gsubfn('.',list('j'='','>'=''),unlist(str_match_all(type[1],'j[0-9]*>')))
+   A3<-A3+1
+  }
+  else if (type[2]=="splA5]" )
+  {
+   mat_A5_ON[A5,1]<-(gsub('j','',str_match_all(type[1],'[0-9]*j')[[1]][1]))
+   mat_A5_ON[A5,2]<-(gsub('j','',str_match_all(type[1],'[0-9]*j')[[1]][2]))
+   A5<-A5+1
+   }
+  else if (type[2]=="splMUT]")
+  {
+    list_MUTEX_ON<-append(list_MUTEX_ON, list(unlist(strsplit(gsub('j','',unlist(str_match_all(type[1],'j[0-9]*_[0-9]*'))),split='_'))))
+  }
+}
+
+#For multiple exon skip and exon skip- 1st is start, 2nd is end
+if(length(list_MULT_ON)!=0)
+{
+starts_MULT_ON<-nth_element(unlist(list_MULT_ON),1,2)
+ends_MULT_ON<-nth_element(unlist(list_MULT_ON),2,2)
+}else {
+  ends_MULT_ON<-c()
+starts_MULT_ON<-c()
+}
+
+if (length(list_ES_ON)!=0)
+{
+starts_ES_ON<-nth_element(unlist(list_ES_ON),1,2)
+ends_ES_ON<-nth_element(unlist(list_ES_ON),2,2)
+}else {
+    ends_ES_ON<-c()
+    starts_ES_ON<-c()
+}
+#For A3- find matching starts and width in ref
+if(dim(mat_A3_ON)[1]!=0){
+for (i in c(1:dim(mat_A3_ON)[1]))
+{
+  if((as.numeric(mat_A3_ON[i,1])-as.numeric(mat_A3_ON[i,2]))<2)
+  {
+    mat_A3_ON[i,]<-NA
+  }
+}
+}
+if(sum(is.na(mat_A3_ON))==0 && dim(mat_A3_ON)[1]!=0){
+starts_A3_ON<-as.vector(mat_A3_ON[,2])
+#which_A3_ON<-match(c(as.numeric(mat_A3_ON[,1])),trt@ranges@start)
+#ends_A3_ON<-trt@ranges@start[which_A3_ON]+trt@ranges@width[which_A3_ON]-1
+ends_A3_ON<-as.numeric(starts_A3_ON)+20
+
+} else
+{
+  starts_A3_ON<-c()
+  ends_A3_ON<-c()
+}
+#For A5 - find matching end and width in ref?
+if(dim(mat_A5_ON)[1]!=0){
+for (i in c(1:dim(mat_A5_ON)[1]))
+{
+  if((abs(as.numeric(mat_A5_ON[i,1])-as.numeric(mat_A5_ON[i,2])))<2)
+  {
+    mat_A5_ON[i,]<-NA
+  }
+}
+}
+if(sum(is.na(mat_A5_ON))==0 && dim(mat_A5_ON)[1]!=0){
+ends_A5_ON<-as.numeric(mat_A5_ON[,2])
+#which_A5_ON<-match(c(round(as.numeric(mat_A5_ON[,1]),-1)),round(trt@ranges@start+trt@ranges@width-1,-1))
+#starts_A5_ON<-as.numeric(mat_A5_ON[,1])-trt@ranges@width[which_A5_ON]
+starts_A5_ON<-ends_A5_ON-20
+} else
+{
+  starts_A5_ON<-c()
+  ends_A5_ON<-c()
+}
+#For mutex exons -
+if(length(list_MUTEX_ON)!=0)
+{
+starts_MUTEX_ON<-nth_element(unlist(list_MUTEX_ON),1,2)
+ends_MUTEX_ON<-nth_element(unlist(list_MUTEX_ON),2,2)
+}else {
+  ends_MUTEX_ON<-c()
+starts_MUTEX_ON<-c()
+}
+
+starts_ON<-c(starts_A3_ON,starts_MULT_ON,starts_ES_ON,starts_A5_ON,starts_MUTEX_ON)
+ends_ON<-c(ends_A3_ON,ends_MULT_ON,ends_ES_ON,ends_A5_ON,ends_MUTEX_ON)
+wid_ON<- as.numeric(ends_ON)-as.numeric(starts_ON)
+
+names_MULT_ON<-c()
+ i=1
+for (element in list_MULT_ON)
+{
+  #print(element)
+  rep_names<-length(element)/2
+  names_MULT_ON<-c(names_MULT_ON, rep(add_ON[grep('mult',add_ON)][i],rep_names))
+  i=i+1
+}
+
+if (is.null(starts_A3_ON)==FALSE)
+{
+  names_A3_ON<-add_ON[grep('alt_3',add_ON)]
+}else{
+  names_A3_ON<-c()
+}
+ 
+ if (is.null(starts_A5_ON)==FALSE)
+{
+  names_A5_ON<-add_ON[grep('alt_5',add_ON)]
+}else{
+  names_A5_ON<-c()
+}
+ 
+names_MUTEX_ON<-c()
+ i=1
+for (element in list_MUTEX_ON)
+{
+  #print(element)
+  rep_names<-length(element)/2
+  names_MUTEX_ON<-c(names_MUTEX_ON, rep(add_ON[grep('mutex',add_ON)][i],rep_names))
+  i=i+1
+}
+ 
+names_ON<-c(names_A3_ON,names_MULT_ON,add_ON[grep('^exon_skip',add_ON)],names_A5_ON,
+         names_MUTEX_ON)
+#group_ON<-c(rep(1,length(grep('alt_3',add_ON))),rep(2,length(starts_MULT_ON)),rep(3,length(grep('^exon_skip',add_ON))),rep(4,length(grep('alt_5',add_ON))),rep(5,length(grep('mutex',add_ON))))
+
+
+match_name<-sub('(_)(\\d+$)','\\.\\2',chosen_event)
+remove<-which(names_ON==match_name)
+names_ON<-names_ON[-remove]
+starts_ON<-starts_ON[-remove]
+ends_ON<-ends_ON[-remove]
+wid_ON<-wid_ON[-remove]
+
+
+if (length(starts_ON)>0 && length(ends_ON)>0)
+{
+aTrack_ON <- AnnotationTrack(start = as.numeric(starts_ON), width = wid_ON, id=names_ON,
+                          chromosome = chrom, name = "Additional events new+old",shape="box",group = names_ON,
+                                  groupAnnotation = "id",
+                                  just.group = "above",background.title='blue')
+#plotTracks(aTrack, shape = "box", fontcolor.feature = "darkblue",extend.left = 0.5)
+}else {aTrack_ON<-NA}
+if (length(starts)>0 && length(ends)>0)
+{
+names_NN<-c(names_A3,names_MULT,add_NN[grep('^exon_skip',add_NN)],names_A5,
+         names_MUTEX)
+#group_NN<-c(rep(1,length(grep('alt_3',add_ON))),rep(2,length(starts_MULT_ON)),rep(3,length(grep('^exon_skip',add_ON))),rep(4,length(grep('alt_5',add_ON))),rep(5,length(grep('mutex',add_ON))))
+aTrack_NN <- AnnotationTrack(start = as.numeric(starts), width = wid, id=names_NN,
+                          chromosome = chrom, name = "Additional events new+new",shape="box",group = names_NN,
+                                  groupAnnotation = "id",
+                                  just.group = "above",background.title='blue')
+#plotTracks(aTrack_NN, shape = "box", fontcolor.feature = "darkblue",extend.left = 0.5)
+
+}else {aTrack_NN<-NA}
+coord_to_comp<-as.data.frame(cbind(unlist(py$new_coord[,1]),unlist(py$new_coord[,2])))
+colnames(coord_to_comp)<-c('start','stop')
+hajlajt<-anti_join(coord_to_comp,py$coding_coord)
+if (isEmpty(hajlajt))
+{
+hajlajt<-anti_join(py$coding_coord,coord_to_comp)
+}
+
+if (length(grep("alt_5prime",chosen_event))>=1)
+{
+  hajlajt<-as.numeric(mat_A5_ON[1,])
+}
+if (length(grep("alt_3prime",chosen_event))>=1)
+{
+  hajlajt<-as.numeric(mat_A3_ON[1,])
+}
+```
+Gene: `r ensemble2gene$external_gene_name[1]`
+Transcript: `r ensemble2gene$ensembl_transcript_id[1]`
+
+```{r,warning=FALSE,message=FALSE,echo=FALSE}
+trt<-trt[trt$feature!='utr5',]
+trt<-trt[trt$feature!='utr3',]
+
+GR_detected<-GeneRegionTrack(dt2, name = "Detected event",fontcolor.feature='black',background.title="brown",collapse=TRUE)#showExonId=TRUE,exonAnnotation='symbol')
+GR_original<-GeneRegionTrack(trt, name = "Original",background.title="brown",collapse=TRUE)
+Prot_track<-AnnotationTrack(dmns2_nodup,shape = "box",group=dmns2_nodup$grp,id=dmns2_nodup$id,
+                                                      just.group="left",stacking='squish', groupAnnotation="id",
+                                                      name = "Interpro protein domains",background.title="brown")
+BAM_file<- "/bi/ala/scratch/amuszynska/Rasflow/Output_GRCm39/Pain_new_genome/genome/bamFileSort/out.bam"
+
+alTrack <- AlignmentsTrack(BAM_file, isPaired = F, background.title="brown")
+
+
+if(is.na(aTrack_NN) && is.na(aTrack_ON))
+{
+  ht <- HighlightTrack(trackList = list(gat,Prot_track,
+                                        GR_original,
+                                        GR_detected,
+                                        alTrack
+                                        #aTrack_ON,
+                                        #aTrack_NN,
+  ),
+  transcriptAnnotation = "transcript",
+  start = range(hajlajt)[1],end=range(hajlajt)[2],chromosome=chrom)
+  plotTracks(list(ht), chromosome = chrom, type = c("coverage"),from =floor(range(hajlajt)[1]/10000)*10000 , to = range(hajlajt)[2]+10000,sizes=c(3,10,4,4,5))
+  plotTracks(list(ht), chromosome = chrom, type = c("coverage"),sizes=c(3,10,4,4,5))
+} else if (is.na(aTrack_NN)){
+  ht <- HighlightTrack(trackList = list(gat,
+                                        Prot_track,
+                                        GR_original,
+                                        GR_detected,
+                                        alTrack,
+                                        aTrack_ON
+                                        #aTrack_NN,
+  ),
+  transcriptAnnotation = "transcript",
+  start = range(hajlajt)[1],end=range(hajlajt)[2],chromosome=chrom)
+  plotTracks(list(ht), chromosome = chrom, type = c("coverage"),from =floor(range(hajlajt)[1]/10000)*10000 , to = range(hajlajt)[2]+10000,sizes=c(3,10,4,4,5,4))
+  plotTracks(list(ht), chromosome = chrom, type = c("coverage"),sizes=c(3,10,4,4,5,4))
+}else if (is.na(aTrack_ON)){
+  ht <- HighlightTrack(trackList = list(gat,Prot_track,
+                                        GR_original,
+                                        GR_detected,
+                                        alTrack,
+                                        #aTrack_ON,
+                                        aTrack_NN),
+                       transcriptAnnotation = "transcript",
+                       start = range(hajlajt)[1],end=range(hajlajt)[2],chromosome=chrom)
+  plotTracks(list(ht), chromosome = chrom, type = c("coverage"),from =floor(range(hajlajt)[1]/10000)*10000 , to = range(hajlajt)[2]+10000,sizes=c(3,10,4,4,5,4))
+  plotTracks(list(ht), chromosome = chrom, type = c("coverage"),sizes=c(3,10,4,4,5,4))
+}else {
+  ht <- HighlightTrack(trackList = list(gat,Prot_track,
+                                        GR_original,
+                                        GR_detected,
+                                        alTrack,
+                                        aTrack_ON,
+                                        aTrack_NN
+  ),
+  transcriptAnnotation = "transcript",
+  start = range(hajlajt)[1],end=range(hajlajt)[2],chromosome=chrom)
+  plotTracks(list(ht), chromosome = chrom, type = c("coverage"),from =floor(range(hajlajt)[1]/10000)*10000 , to = range(hajlajt)[2]+10000,sizes=c(3,10,4,4,5,4,4))
+  plotTracks(list(ht), chromosome = chrom, type = c("coverage"),sizes=c(3,10,4,4,5,4,4))
+}
+
+
+```
+
