@@ -388,8 +388,10 @@ render.venn.diagram(ven)
 
 ```{r,warning=FALSE,message=FALSE,fig.align='left', include=FALSE}
 #prepare for InterProScan
+events_interpro<-c('alt_3prime','alt_5prime','exon_skip','mult_exon_skip','mutex_exons')
 for (event in events)
 {
+  i=1
   bisbee<-get(paste(event,'_bisbee',sep=''))
   bisbee_prot<-get(paste(event,'_bisbee_pep',sep=''))
   for (group in c('_both_new','_both_known','_newAndOld'))
@@ -407,8 +409,9 @@ for (event in events)
     Bisbee_filtered$event_id<-sub('(\\.)(\\d+$)','\\_\\2',Bisbee_filtered$event_id)
     pasta<-paste('>.+',paste(Bisbee_filtered$event_id,collapse='\\D.+\\n[A-Z,\\n]+|>.+'),'\\D.+\\n[A-Z,\\n]+',sep='')
     pasta<-paste(paste(Bisbee_filtered$event_id,collapse='\\D\n'),'\\D',sep='')
-    cat(pasta,file=paste(bb_path,'/',name_filtered,'_to_grep.txt',sep=''),sep='')
+    cat(pasta,file=paste(bb_path,'/',events_interpro[i],group,'_bisbee_filtered','_to_grep.txt',sep=''),sep='')
   }
+  i=i+1
 }
 
 #prepare tab for plots

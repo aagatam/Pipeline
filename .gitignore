@@ -2,6 +2,7 @@
 __pycache__/
 
 Output/
+temp/
 Test_data/
 Spladder_files/
 logs/

@@ -1,11 +1,18 @@
 # High- throughput data analysis pipeline
 # Contents
-1. [Requirements](#requirements)
-2. [Installation](#installation)
-3. [Configuration](#config)
-4. [Running the pipeline](#run)
-  1. [QC raw reads](#qc)
-  2. [Alignment to genome](#genome)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Configuration](#config)
+- [Running the pipeline](#run)
+  - [QC raw reads](#qc)
+  - [Alignment to genome](#genome)
+  - [Alignment to transcriptome](#trans)
+  - [Alternative splicing discover](#ASdis)
+  - [Alternative splicing analysis](#ASan)
+  - [Associated protein domains analysis](#Prot)
+  - [Final plots](#plots)
+  - [Differential expression analysis](#dif)
+  - [Microarray differential expression](#micro)
 
 ## How does this work?
 Snakeamke wrapper scripts (located in the `workflow` folder) enable for automatic RNA-seq data analysis in terms of quality control, assembly, quantification, gene ontology, differential gene expression and alternative splicing and it's effects on protein level. Additional 'RMarkdown' script enables final visualization for AS.
@@ -45,7 +52,7 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
     - sorted BAM files in `bamFIleSort`,
     - qualimap alignment QC in `alignmentQC` folder
 
-### 3. Alignment to transcriptome
+### 3. Alignment to transcriptome <a name="trans"></a>
  - `snakemake --cores all -p -s workflow/align_kallisto.snakefile`
 #### **Outputs**
   - In `FINALOUTPUT`/`PROJECT`/trans:
@@ -58,7 +65,7 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
 ## Alternative splicing and effects analysis
 ### To perform ASEs analysis alignment to genome must be done!
 
-### 4. Alternative splicing discovery with Spladder and analysis with R
+### 4. Alternative splicing discovery with Spladder and analysis with R <a name="ASdis"></a>
 This part will index all BAM files, run Spladder and analyse its output files with Rmarkdown script producing report and also bunch of csv files with results and files needed for further analysis with InterProscan and visualization. Depending on dataset size, this step might take a few hours, especially during first run when necessary libraries are downloaded.
  - `snakemake --cores all -p -s workflow/spladder_run.snakefile`
 #### **Outputs**
@@ -76,7 +83,7 @@ This part will index all BAM files, run Spladder and analyse its output files wi
     - files  _to_grep.txt used for filtering fasta files for further InterProScan analysis.
   - Spladder.pdf - report in `scripts` folder
 
-### 5. Alternative events analysis with Bisbee
+### 5. Alternative events analysis with Bisbee <a name="ASan"></a>
 Install desired species release, for example:
  - `pyensembl install --release 104 --species mouse`\
  THEN
@@ -86,7 +93,7 @@ Install desired species release, for example:
     - csv files with bisbee results,
     - fasta files with transcripts including novel events.
 
-### 6. Protein domains affected by ASEs analysis with InterProScan
+### 6. Protein domains affected by ASEs analysis with InterProScan <a name="Prot"></a>
  - `snakemake --cores all -p -s workflow/interproscan_run.snakefile`
 #### **Outputs**
    - In `FINALOUTPUT`/`PROJECT`/genome/bisbee:
@@ -94,13 +101,13 @@ Install desired species release, for example:
   - In `FINALOUTPUT`/`PROJECT`/genome/InterProScan:
    - .tsv files with InterProScan results
 
-### 7. Final visualization with RMarkdown:
+### 7. Final visualization with RMarkdown: <a name="Plots"></a>
  - `R -e "rmarkdown::render('scripts/Plots.Rmd',params=list(event_type='event_type', event='event_no'),output_file='Out_name.pdf')"` \
  Here `event_no` is the event you want to visualize (for example mutex_exons_168) and `event_type` is one of: alt_3_prime, alt_5_prime, exon_skip, mult_exon_skip, mutex_exons (in this case mutex_exons).
 #### **Outputs**
    - Plots.pdf file with two plots for a given event. One for the whole transcript, and a close-up on the second one.
 
-## 8. Differential gene expression and Gene Ontology analysis for RNA-seq
+## 8. Differential gene expression and Gene Ontology analysis for RNA-seq <a name="dif"></a>
  - `R -e "rmarkdown::render('scripts/Expression_HiSat.Rmd')"`
 #### **Outputs**
   - Expression_HiSat.pdf report in `scripts` folder
@@ -111,7 +118,7 @@ Install desired species release, for example:
 #### **Outputs**
    - Expression_Kallisto.pdf report in `scripts` folder
 
-## 9. Differential gene expression and Gene Ontology for Illumina microarrays
+## 9. Differential gene expression and Gene Ontology for Illumina microarrays <a name="micro"></a>
  - `R -e "rmarkdown::render('scripts/Expression_Illumina_ microarrays.Rmd')"`
 #### **Outputs**
    - Expression_Illumina_ microarrays.pdf report in `scripts` folder

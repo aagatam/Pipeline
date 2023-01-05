@@ -9,6 +9,14 @@ import os
 import io
 from Bio import pairwise2
 import utils as bb
+import warnings
+
+def fxn():
+    warnings.warn("deprecated", DeprecationWarning)
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    fxn()
 
 print(sys.version_info)
 print(pd._version)
@@ -300,7 +308,7 @@ for index,row in events_table.iterrows():
  events_table.loc[index,"top_effect_transcript"]=top_effectId.split('_')[0]
 
 
-events_table.to_csv('.'.join([out_name,event_type,'effects.csv']))
+events_table.to_csv('.'.join([out_name,'effects.csv']))
 wt_fasta.close()
 novel_fasta.close()
 novel_fasta_change.close()

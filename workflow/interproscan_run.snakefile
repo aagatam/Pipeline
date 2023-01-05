@@ -27,7 +27,7 @@ rule grepFasta:
     output:
         FASTAFILT = bisbee_out + "/{event}.grepped.filtered.fasta"
     params:
-        GREP = bisbee_out + "/{event}_newAndOld_bisbee_filtered_to_grep_small.txt"
+        GREP = bisbee_out + "/{event}_newAndOld_bisbee_filtered_to_grep.txt"
     run:
         shell("cat {input.FASTAIN} | pcregrep -M -A 1 --buffer-size=40000 -f {params.GREP} > {output.FASTAFILT}") #grep only those common
         shell("sed -i 's/--//' {output.FASTAFILT}") #sed --
