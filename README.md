@@ -1,11 +1,11 @@
 # High- throughput data analysis pipeline
-# Table of contents
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Configuration](#config)
-- [Running the pipeline](#run)
-  - [QC raw reads](#qc)
-  - [Alignment to genome](#genome)
+# Contents
+1. [Requirements](#requirements)
+2. [Installation](#installation)
+3. [Configuration](#config)
+4. [Running the pipeline](#run)
+  1. [QC raw reads](#qc)
+  2. [Alignment to genome](#genome)
 
 ## How does this work?
 Snakeamke wrapper scripts (located in the `workflow` folder) enable for automatic RNA-seq data analysis in terms of quality control, assembly, quantification, gene ontology, differential gene expression and alternative splicing and it's effects on protein level. Additional 'RMarkdown' script enables final visualization for AS.
