@@ -27,6 +27,7 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis.
  - `snakemake --cores all -p -s workflow/align_HiSat2.snakefile`
 ### 3. Alignment to transcriptome
  - `snakemake --cores all -p -s workflow/align_kallisto.snakefile`
+**Outputs**
 
 ## Alternative splicing and effects analysis
 ### To perform ASEs analysis alignment to genome must be done!
@@ -34,7 +35,7 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis.
 ### 4. Alternative splicing discovery with Spladder and analysis with R
 This part will index all BAM files, run Spladder and analyse its output files with Rmarkdown script producing report and also bunch of csv files with results and files needed for further analysis with InterProscan and visualization.
  - `snakemake --cores all -p -s workflow/spladder_run.snakefile`
- - Outputs:
+  **Outputs**
   - In `FINALOUTPUT`/`PROJECT`/genome/spladder:
     - To_plots.csv <- file with all common events from new+new and new+old group
     - To_plots.Rmd <- for further visualizations with Plots.Rmd
