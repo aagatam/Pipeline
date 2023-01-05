@@ -385,6 +385,95 @@ ven<-venn.diagram(x=list('newAndOld'=unique(mult_exon_skip_newAndOld_common$gene
 render.venn.diagram(ven)
 ```
 
+```{r,warning=FALSE,message=FALSE,fig.align='left', include=FALSE}
+#prepare for InterProScan
+for (event in events)
+{
+  bisbee<-get(paste(event,'_bisbee',sep=''))
+  bisbee_prot<-get(paste(event,'_bisbee_pep',sep=''))
+  for (group in c('_both_new','_both_known','_newAndOld'))
+  {
+    spladder<-get(paste(event,group,'_common',sep=''))
+    Bisbee_filtered<-bisbee[bisbee$event_id%in%spladder$event_id,]
+    name_filtered<-paste(event,group,'_bisbee_filtered',sep='')
+    assign(name_filtered,Bisbee_filtered)
+    Bisbee_filtered_prot<-bisbee_prot[bisbee_prot$event_id%in%spladder$event_id,]
+    name_filtered_prot<-paste(event,group,'_bisbee_prot_filtered',sep='')
+    assign(name_filtered_prot,Bisbee_filtered_prot)
+    setwd(bb_path)
+    write.csv(Bisbee_filtered,name_filtered)
+    write.csv(Bisbee_filtered_prot,name_filtered_prot)
+    Bisbee_filtered$event_id<-sub('(\\.)(\\d+$)','\\_\\2',Bisbee_filtered$event_id)
+    pasta<-paste('>.+',paste(Bisbee_filtered$event_id,collapse='\\D.+\\n[A-Z,\\n]+|>.+'),'\\D.+\\n[A-Z,\\n]+',sep='')
+    pasta<-paste(paste(Bisbee_filtered$event_id,collapse='\\D\n'),'\\D',sep='')
+    cat(pasta,file=paste(name_filtered,'_to_grep_small.txt',sep=''),sep='')
+  }
+}
+
+#prepare tab for plots
+gene_names<-(unique(c(mult_exon_skip_newAndOld_bisbee_prot_filtered$gene,mutex_exons_newAndOld_bisbee_prot_filtered$gene,alt_5_prime_newAndOld_bisbee_prot_filtered$gene,
+                    alt_3_prime_newAndOld_bisbee_prot_filtered$gene,exon_skip_newAndOld_bisbee_prot_filtered$gene)))
+
+
+group<-'newAndOld'
+tab<-data.frame(row.names = gene_names)
+tab$events<-''
+tab$effect_orf<-''
+tab$effect_aa<-''
+i=1
+for (gene in gene_names)
+{
+  for (event in events )
+  {
+    name_filtered_prot<-paste(event,group,'bisbee_prot_filtered',sep='_')
+    data<-get(name_filtered_prot)
+    data<-data[which(data$topEffect=='True'),]
+    idx<-which(data$gene==gene)
+    if (length(idx!=0))
+    {
+    tab$events[i]<-paste(tab$events[i], paste(data$event_id[idx],collapse=' '), sep=' ')
+    tab$effect_orf[i]<-paste(tab$effect_orf[i], paste(data$orf_effect[idx],collapse=' '), sep=' ')
+    tab$effect_aa[i]<-paste(tab$effect_aa[i], paste(data$aa_effect[idx],collapse=' '), sep=' ')
+    }
+  }
+  i=i+1
+}
+
+
+mart<-useMart(biomart="ENSEMBL_MART_ENSEMBL",
+              dataset='mmusculus_gene_ensembl',
+              host='useast.ensembl.org')
+
+ensemble2gene <- getBM(attributes=c("ensembl_gene_id","external_gene_name"),
+                       filters = c("external_gene_name"),
+                       values= list(gene_names),
+                       mart = mart)
+group<-'both_new'
+tab_BN<-data.frame(row.names = ensemble2gene$ensembl_gene_id)
+tab_BN$events<-''
+i=1
+for (gene in ensemble2gene$ensembl_gene_id)
+{
+  for (event in events )
+  {
+    name_filtered_prot<-paste(event,group,'common',sep='_')
+    data<-get(name_filtered_prot)
+    idx<-which(data$gene_name==gene)
+    if (length(idx!=0))
+    {
+      tab_BN$events[i]<-paste(tab_BN$events[i], paste(data$event_id[idx],collapse=' '), sep=' ')
+    }
+  }
+  i=i+1
+}
+tab$gene_name<-rownames(tab)
+tab_BN$gene_name<-ensemble2gene$external_gene_name
+tab_merged_NN_ON<-merge(tab, tab_BN,by.x='gene_name',by.y='gene_name')
+colnames(tab_merged_NN_ON)<-c('gene_name','ON_events','effect_orf','effect_aa','NN_events')
+save(tab_merged_NN_ON,alt_3_prime_newAndOld_bisbee_filtered, alt_3_prime_both_new_bisbee_filtered,alt_5_prime_newAndOld_bisbee_filtered,alt_5_prime_both_new_bisbee_filtered,mutex_exons_both_new_bisbee_filtered,mutex_exons_newAndOld_bisbee_filtered,mult_exon_skip_both_new_bisbee_filtered,mult_exon_skip_newAndOld_bisbee_filtered,exon_skip_both_new_bisbee_filtered,exon_skip_newAndOld_bisbee_filtered,file=paste(spl_path,'To_plots.RData',sep='\\'))
+
+```
+
 # Section 4 
 ## Upset plots for GO terms
 

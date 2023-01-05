@@ -229,6 +229,7 @@ new_coord=get_new_coord(matching_isoform,event_coords,coding_coord) #<-brakuje j
 
 ```{r,include=FALSE,warning=FALSE,message=FALSE,echo=FALSE}
 #Plots
+load(paste(spl_path,'To_plots.RData',sep='\\'))
 ah <- AnnotationHub()
 ahdb<-AnnotationHub::query(ah, "EnsDb.Mmusculus.v104")
 edb<-ahdb[[1]]
