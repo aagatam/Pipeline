@@ -67,26 +67,44 @@ This part will index all BAM files, run Spladder and analyse its output files wi
     - bisbee results filtered with respect to valid events.
   - In `FINALOUTPUT`/`PROJECT`/genome/bisbee:
     - files  _to_grep.txt used for filtering fasta files for further InterProScan analysis.
+  - Spladder.pdf - report in `scripts` folder
 
 ### 5. Alternative events analysis with Bisbee
 Install desired species release, for example:
  - `pyensembl install --release 104 --species musmusculus`\
  THEN
  - `snakemake --cores all -p -s workflow/bisbee_run.snakefile`
-### 6. Protein domains affected by ASEs with InterProScan
+#### **Outputs**
+   - In `FINALOUTPUT`/`PROJECT`/genome/bisbee:
+    - csv files with bisbee results,
+    - fasta files with transcripts including novel events.
+
+### 6. Protein domains affected by ASEs analysis with InterProScan
  - `snakemake --cores all -p -s workflow/interproscan_run.snakefile`
+#### **Outputs**
+   - In `FINALOUTPUT`/`PROJECT`/genome/bisbee:
+    - .grepped.filtered.fasta - new fasta files with only intresting events, prepared for InterProSacn analysis,
+  - In `FINALOUTPUT`/`PROJECT`/genome/InterProScan:
+   - .tsv files with InterProScan results
+
 ### 7. Final visualization with RMarkdown:
  - `R -e "rmarkdown::render('scripts/Plots.Rmd',params=list(event_type='event_type', event='event_no'),output_file='Out_name.pdf')"` \
  Here `event_no` is the event you want to visualize (for example mutex_exons_168) and `event_type` is one of: alt_3_prime, alt_5_prime, exon_skip, mult_exon_skip, mutex_exons (in this case mutex_exons).
+#### **Outputs**
+   - Plots.pdf file with two plots for a given event. One for the whole transcript, and a close-up on the second one.
 
 ## Differential gene expression and Gene Ontology analysis for RNA-seq
  - `R -e "rmarkdown::render('scripts/Expression_HiSat.Rmd')"`
- - Output: `scripts/Expression_HiSat.pdf`
+#### **Outputs**
+  - Expression_HiSat.pdf report in `scripts` folder
 
  OR
 
  - `R -e "rmarkdown::render('scripts/Expression_Kallisto.Rmd')"`
- - Output: `scripts/Expression_Kallisto.pdf`
+#### **Outputs**
+   - Expression_Kallisto.pdf report in `scripts` folder
 
 ## Differential gene expression and Gene Ontology for Illumina microarrays
  - `R -e "rmarkdown::render('scripts/Expression_Illumina_ microarrays.Rmd')"`
+#### **Outputs**
+   - Expression_Illumina_ microarrays.pdf report in `scripts` folder
