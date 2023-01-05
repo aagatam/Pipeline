@@ -20,21 +20,40 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis.
  You need to adjust two files `configs/config.yaml` and `configs/Description.csv` to match your data. All the fields in first config are explained within the original file. Currently only analysis for samples with equal repetitions is available.
 
 ## 3. Running the pipeline.
-## Quality control, assebmle and quantification.
+## Quality control, assebmle and quantification. Pipeline accepts either .fastq files or .fastq.dsrc files.
 ### 1. Quality contol on raw reads
  - `snakemake --cores all -p -s workflow/quality_control.snakefile`
+ **Outputs**
+   - In `FINALOUTPUT`/`PROJECT`/fastqc:
+    - summary report_quality_control.html,
+    - report for each sample
 ### 2. Alignment to genome
  - `snakemake --cores all -p -s workflow/align_HiSat2.snakefile`
+ **Outputs**
+   - In `FINALOUTPUT`/`PROJECT`/genome:
+    - multiqc summary report  report_align_count.html,
+    - results prepared for analysis with R in `Hisat_results` folder,
+    - Strintie results in `countFile` folder,
+    - index in `indexes` folder,
+    - sorted BAM files in `bamFIleSort`,
+    - qualimap alignment QC in `alignmentQC` folder
+
 ### 3. Alignment to transcriptome
- - `snakemake --cores all -p -s workflow/align_kallisto.snakefile`
+ - `snakemake --cores all -p -s workflow/align_kallisto.snakefile` \
 **Outputs**
+  - In `FINALOUTPUT`/`PROJECT`/trans:
+    - multiqc summary report report_align_count.html,
+    - benchmarks folder,
+    - kallisto index in `indexes` folder,
+    - log files in `kallisto` folder,
+    - folders with Kallisto results for all samples in `kallisto` folder
 
 ## Alternative splicing and effects analysis
 ### To perform ASEs analysis alignment to genome must be done!
 
 ### 4. Alternative splicing discovery with Spladder and analysis with R
 This part will index all BAM files, run Spladder and analyse its output files with Rmarkdown script producing report and also bunch of csv files with results and files needed for further analysis with InterProscan and visualization.
- - `snakemake --cores all -p -s workflow/spladder_run.snakefile`
+ - `snakemake --cores all -p -s workflow/spladder_run.snakefile` \
   **Outputs**
   - In `FINALOUTPUT`/`PROJECT`/genome/spladder:
     - To_plots.csv <- file with all common events from new+new and new+old group
