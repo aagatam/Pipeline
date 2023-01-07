@@ -6,6 +6,7 @@ temp/
 Test_data/
 Spladder_files/
 logs/
+Expression_HiSat_files/
 configs/Description_N.csv
 .DS_store
 .snakemake

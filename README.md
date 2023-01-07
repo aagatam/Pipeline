@@ -109,14 +109,14 @@ Install desired species release, for example:
 
 ## 8. Differential gene expression and Gene Ontology analysis for RNA-seq <a name="dif"></a>
  - `R -e "rmarkdown::render('scripts/Expression_HiSat.Rmd')"`
-#### **Outputs**
-  - Expression_HiSat.pdf report in `scripts` folder
 
  OR
 
  - `R -e "rmarkdown::render('scripts/Expression_Kallisto.Rmd')"`
-#### **Outputs**
-   - Expression_Kallisto.pdf report in `scripts` folder
+#### **Outputs for both scripts**
+   - pdf report in `scripts` folder,
+   - results for limma, edgeR and DeSeq2 DEG (all and below given p-value) in `FINALOUTPUT`/`PROJECT`/genome/Hisat_results or `FINALOUTPUT`/`PROJECT`/trans/kallisto,
+   - results for GO terms analysis in folders like above.
 
 ## 9. Differential gene expression and Gene Ontology for Illumina microarrays <a name="micro"></a>
  - `R -e "rmarkdown::render('scripts/Expression_Illumina_ microarrays.Rmd')"`
