@@ -8,7 +8,7 @@ PROJECT: Test
 INPUTPATH: /home/agata/Documents/Work/Pipeline/Test_data
 
 ## the meta file describing the experiment settings
-METAFILE: configs/Description_N.csv
+METAFILE: configs/Description.csv
 
 ## paths for intermediate and final outputs
 FINALOUTPUT: /home/agata/Documents/Work/Pipeline/Output
@@ -46,3 +46,12 @@ BAM: /home/agata/Documents/Work/Pipeline_old/Output/Test/genome/bamFileSort/CMV_
 
 ## InterProScan path
 IP_PATH: /home/agata/Documents/Work/InterPro/interproscan-5.55-88.0
+
+#For differential expression- define which groups to check
+CONTRAST_HiSat: B1_CMV_PNSLvsB1_CMV_SHAM=B1_CMV_SHAM-B1_WTP_SHAM
+P_VAL_HiSat: 0.05
+TH_GO_HiSat: 0.01
+
+CONTRAST_kallisto: B1_CMV_PNSLvsB1_CMV_SHAM=B1_CMV_SHAM-B1_WTP_SHAM
+P_VAL_kallisto: 0.05
+TH_GO_kallisto: 0.01

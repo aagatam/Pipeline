@@ -12,6 +12,7 @@ dependencies:
   - r-base=4.2.1
   - python
   - pip
+  - dsrc
 #  - interproscan
 # r channel installs
 #  - r-yaml=2.2.0
