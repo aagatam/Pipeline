@@ -102,7 +102,7 @@ Install desired species release, for example:
   - In `FINALOUTPUT`/`PROJECT`/genome/InterProScan:
    - .tsv files with InterProScan results
 
-### 7. Final visualization with RMarkdown: <a name="Plots"></a>
+### 7. Final visualization with RMarkdown: <a name="plots"></a>
  - `R -e "rmarkdown::render('scripts/Plots.Rmd',params=list(event_type='event_type', event='event_no'),output_file='Out_name.pdf')"` \
  Here `event_no` is the event you want to visualize (for example mutex_exons_168) and `event_type` is one of: alt_3_prime, alt_5_prime, exon_skip, mult_exon_skip, mutex_exons (in this case mutex_exons).
 #### **Outputs**
