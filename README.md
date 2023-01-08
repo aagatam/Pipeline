@@ -7,9 +7,9 @@
   - [QC raw reads](#qc)
   - [Alignment to genome](#genome)
   - [Alignment to transcriptome](#trans)
-  - [Alternative splicing discover](#ASdis)
-  - [Alternative splicing analysis](#ASan)
-  - [Associated protein domains analysis](#Prot)
+  - [Alternative splicing discover](#asdis)
+  - [Alternative splicing analysis](#asan)
+  - [Associated protein domains analysis](#prot)
   - [Final plots](#plots)
   - [Differential expression analysis](#dif)
   - [Microarray differential expression](#micro)
@@ -65,12 +65,12 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
 #### Alternative splicing and effects analysis
 #### To perform ASEs analysis alignment to genome must be done!
 
-### 4. Alternative splicing discovery with Spladder  <a name="ASdis"></a>
+### 4. Alternative splicing discovery with Spladder  <a name="asdis"></a>
 This part will index all BAM files and run Spladder.
  - `snakemake --cores all -p -s workflow/spladder_run.snakefile`
 #### **Outputs**
 
-### 5. Alternative events analysis with Bisbee and analysis with R <a name="ASan"></a>
+### 5. Alternative events analysis with Bisbee and analysis with R <a name="asan"></a>
 This part will run Bisbbe and analyse its output files with Rmarkdown script producing report and also bunch of csv files with results and files needed for further analysis with InterProscan and visualization. Depending on dataset size, this step might take a few hours, especially during first run when necessary libraries are downloaded. \
 Install desired species release, for example:
  - `pyensembl install --release 104 --species mouse`\
@@ -94,7 +94,7 @@ Install desired species release, for example:
     - files  _to_grep.txt used for filtering fasta files for further InterProScan analysis.
   - Spladder.pdf - report in `scripts` folder
 
-### 6. Protein domains affected by ASEs analysis with InterProScan <a name="Prot"></a>
+### 6. Protein domains affected by ASEs analysis with InterProScan <a name="prot"></a>
  - `snakemake --cores all -p -s workflow/interproscan_run.snakefile`
 #### **Outputs**
    - In `FINALOUTPUT`/`PROJECT`/genome/bisbee:
