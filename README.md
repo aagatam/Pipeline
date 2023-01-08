@@ -62,8 +62,8 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
     - log files in `kallisto` folder,
     - folders with Kallisto results for all samples in `kallisto` folder
 
-### Alternative splicing and effects analysis
-### To perform ASEs analysis alignment to genome must be done!
+#### Alternative splicing and effects analysis
+#### To perform ASEs analysis alignment to genome must be done!
 
 ### 4. Alternative splicing discovery with Spladder  <a name="ASdis"></a>
 This part will index all BAM files and run Spladder.
