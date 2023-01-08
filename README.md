@@ -65,10 +65,21 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
 ## Alternative splicing and effects analysis
 ### To perform ASEs analysis alignment to genome must be done!
 
-### 4. Alternative splicing discovery with Spladder and analysis with R <a name="ASdis"></a>
-This part will index all BAM files, run Spladder and analyse its output files with Rmarkdown script producing report and also bunch of csv files with results and files needed for further analysis with InterProscan and visualization. Depending on dataset size, this step might take a few hours, especially during first run when necessary libraries are downloaded.
+### 4. Alternative splicing discovery with Spladder  <a name="ASdis"></a>
+This part will index all BAM files and run Spladder.
  - `snakemake --cores all -p -s workflow/spladder_run.snakefile`
 #### **Outputs**
+
+### 5. Alternative events analysis with Bisbee and analysis with R <a name="ASan"></a>
+This part will run Bisbbe and analyse its output files with Rmarkdown script producing report and also bunch of csv files with results and files needed for further analysis with InterProscan and visualization. Depending on dataset size, this step might take a few hours, especially during first run when necessary libraries are downloaded. \
+Install desired species release, for example:
+ - `pyensembl install --release 104 --species mouse`\
+ THEN
+ - `snakemake --cores all -p -s workflow/bisbee_run.snakefile`
+#### **Outputs**
+   - In `FINALOUTPUT`/`PROJECT`/genome/bisbee:
+    - csv files with bisbee results,
+    - fasta files with transcripts including novel events.
   - In `FINALOUTPUT`/`PROJECT`/genome/spladder:
     - To_plots.csv <- file with all common events from new+new and new+old group
     - To_plots.Rmd <- for further visualizations with Plots.Rmd
@@ -82,16 +93,6 @@ This part will index all BAM files, run Spladder and analyse its output files wi
   - In `FINALOUTPUT`/`PROJECT`/genome/bisbee:
     - files  _to_grep.txt used for filtering fasta files for further InterProScan analysis.
   - Spladder.pdf - report in `scripts` folder
-
-### 5. Alternative events analysis with Bisbee <a name="ASan"></a>
-Install desired species release, for example:
- - `pyensembl install --release 104 --species mouse`\
- THEN
- - `snakemake --cores all -p -s workflow/bisbee_run.snakefile`
-#### **Outputs**
-   - In `FINALOUTPUT`/`PROJECT`/genome/bisbee:
-    - csv files with bisbee results,
-    - fasta files with transcripts including novel events.
 
 ### 6. Protein domains affected by ASEs analysis with InterProScan <a name="Prot"></a>
  - `snakemake --cores all -p -s workflow/interproscan_run.snakefile`
@@ -107,7 +108,7 @@ Install desired species release, for example:
 #### **Outputs**
    - Plots.pdf file with two plots for a given event. One for the whole transcript, and a close-up on the second one.
 
-## 8. Differential gene expression and Gene Ontology analysis for RNA-seq <a name="dif"></a>
+### 8. Differential gene expression and Gene Ontology analysis for RNA-seq <a name="dif"></a>
  - `R -e "rmarkdown::render('scripts/Expression_HiSat.Rmd')"`
 
  OR
@@ -118,7 +119,7 @@ Install desired species release, for example:
    - results for limma, edgeR and DeSeq2 DEG (all and below given p-value) in `FINALOUTPUT`/`PROJECT`/genome/Hisat_results or `FINALOUTPUT`/`PROJECT`/trans/kallisto,
    - results for GO terms analysis in folders like above.
 
-## 9. Differential gene expression and Gene Ontology for Illumina microarrays <a name="micro"></a>
+### 9. Differential gene expression and Gene Ontology for Illumina microarrays <a name="micro"></a>
  - `R -e "rmarkdown::render('scripts/Expression_Illumina_ microarrays.Rmd')"`
 #### **Outputs**
    - Expression_Illumina_ microarrays.pdf report in `scripts` folder
