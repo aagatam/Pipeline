@@ -7,7 +7,7 @@
   - [QC raw reads](#qc)
   - [Alignment to genome](#genome)
   - [Alignment to transcriptome](#trans)
-  - [Alternative splicing discover](#asdis)
+  - [Alternative splicing discovery](#asdis)
   - [Alternative splicing analysis](#asan)
   - [Associated protein domains analysis](#prot)
   - [Final plots](#plots)

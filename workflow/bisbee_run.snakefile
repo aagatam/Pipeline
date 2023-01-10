@@ -11,7 +11,7 @@ rule end:
     input:
         expand(bisbee_out + "/{event}.effects.csv",event=events),
         expand(bisbee_out + "/{event}.peptides.csv",event=events),
-        #expand(bisbee_out + "/{event}.changeSeq.fasta",event=events)
+        'scripts/Spladder.pdf'
 
 
 rule bisbeePrep:
@@ -39,3 +39,11 @@ rule bisbeeProt:
         EV = "{event}"
     shell:
         "python {params.BB}/build.py {input.CSV} {params.EV} 9 {params.name} {params.release} {params.genome} "
+
+rule markdown:
+    input:
+        "scripts/Spladder.Rmd"
+    output:
+        'scripts/Spladder.pdf'
+    shell:
+        "Rscript -e \"rmarkdown::render('scripts/Spladder.Rmd')\""
