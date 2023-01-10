@@ -1,21 +1,13 @@
 ---
-title: "Neuropathic pain in mouse analysis"
+title: "Differential expresion and GO terms analysis with Kallisto"
 output: pdf_document
 params:
   inpath: "../configs"
 ---
 
-```{r "setup", include=FALSE}
-require("knitr")
-path<-params$inpath
-opts_knit$set(root.dir = path)
-knitr::opts_chunk$set(echo=FALSE)
-
-```
-
 ```{r,warning=FALSE,message=FALSE,include=FALSE}
 
-packages<-c("knitr","RColorBrewer","VennDiagram","veccompare","ggplot2","gplots","yaml","gridExtra")
+packages<-c("knitr","RColorBrewer","VennDiagram","veccompare","ggplot2","gplots","yaml","gridExtra","statmod")
 package.check <- lapply(
   packages,
   FUN = function(x) {
@@ -34,10 +26,14 @@ notInstalled <- which( !listOfBiocPackages %in% rownames(installed.packages()) )
 if( length(notInstalled) ) {
     BiocManager::install(listOfBiocPackages[ notInstalled ])
 }
-path_configs<-params$inpath
+lapply(listOfBiocPackages,library, character.only=TRUE)
+lapply(packages,require, character.only=TRUE)
 
+path_configs<-params$inpath
 #opts_knit$set(root.dir = path)
 knitr::opts_chunk$set(echo=FALSE)
+config<-read_yaml(paste(path_configs,'/config.yaml',sep=''),fileEncoding = "UTF-8")
+kallisto_path<-paste(config$FINALOUTPUT,config$PROJECT,'trans/kallisto',sep='/')
 
 ```
 
@@ -45,7 +41,9 @@ knitr::opts_chunk$set(echo=FALSE)
 ###########
 #Functions
 ###########
+
 Plot_PCA<-function(data,samples,names_col,group_size,no_of_batches,size_of_batches,col_vector,title){
+
     symbols<-c()
     for (i in 1:no_of_batches){
         symbols<-c(symbols,c(rep(i,each=size_of_batches[i])))
@@ -56,17 +54,13 @@ Plot_PCA<-function(data,samples,names_col,group_size,no_of_batches,size_of_batch
     pc2<-round((pc$sdev[2])^2 / sum(pc$sdev^2),digits=2) 
     pc3<-round((pc$sdev[3])^2 / sum(pc$sdev^2),digits=2) 
     cols<-rep(sample(col_vector,length(names_col)),each=group_size)
-
-    WTP<-grep("(B[1-3]_WTP_SHAM)",samples)
-    PNSL<-grep("(B[1-3]_WTP_PNSL)",samples)
-    cols[WTP]<-cols[21]
-    cols[PNSL]<-cols[17]
-    symbols2<<-symbols
-    cols2<<-cols
-    plot( pc$x[,1:2],pch=symbols, cex=3,lwd=4,col=cols,main=title,xlab=paste('PC1=',pc1),ylab=paste('PC2=',pc2))
+    par(mar=c(5.1, 4.1, 4.1, 8.1), xpd=TRUE)
+    plot( pc$x[,1:2],pch=symbols, cex=3,col=cols, main=title,xlab=paste('PC1=',pc1),ylab=paste('PC2=',pc2))
+    #plot( pc$x[,2:3],pch=symbols, cex=3,col=cols, main=title,xlab=paste('PC2=',pc2),ylab=paste('PC3=',pc3))
     legend("topright", inset=c(-0.3,0),legend=names_col,pch=rep(unique(symbols),size_of_batches/group_size),col=unique(cols),cex=0.7)
+}
 
-    }
+
 
 Plot_violin<-function(data,samples, group_size){
 
@@ -100,27 +94,42 @@ Plot_violin<-function(data,samples, group_size){
 
     df.m <- reshape2::melt(df_dispersion_raw, id.vars = NULL)
     pl<-ggplot(df.m, aes(x = variable, y = value)) + geom_violin()
-    x11()
-    pl + theme(axis.text.x = element_text(face="bold", color="#993333",size=10, angle=90))
+    pl + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+    
 }
+```
+
+# Section 1 - Limma
+
+```{r,warning=FALSE,message=FALSE,include=FALSE}
 
 ###################
 #Data load
 ###################
-## HiSat2+StringTie
-hisat.t <- read.table(file="/Users/agatamuszynska/Work/Expression_analysis_GRCm39/transcript_count_matrix.csv", header=TRUE, row.names=1, sep=",")
-hisat.g <- read.table(file="/Users/agatamuszynska/Work/Expression_analysis_GRCm39/gene_count_matrix.csv", header=TRUE, row.names=1, sep=",")
-Description<-read.table("/Users/agatamuszynska/Work/Pain_final/Pain_HiSat/Description.txt",sep=',',header=TRUE, stringsAsFactors=FALSE)
 
-for (i in (1:88))
+## reading in kallisto
+Description<-read.table(paste(path_configs,'/Description.csv',sep=''),header=TRUE,sep=',', stringsAsFactors=FALSE)
+dataset_size<-dim(Description)[1]
+for (i in (1:dataset_size))
 {
   Description[i,7]<-paste('B',Description[i,5],'_',Description[i,3],'_',Description[i,4],sep="")
 }
 colnames(Description)[7]<-c("Name")
-colnam2<-c()
-for (i in (1:88))
+
+
+data.trans.counts <- c()
+for (name in Description$GROUP)
 {
-  colnam2[i]<-Description[which(Description$Samples==colnames(hisat.g)[i]),7]
+  fin <- read.table(paste(kallisto_path,name,'/abundance.tsv', sep=""), header=TRUE, row.names=1)
+  data.trans.counts <- cbind(data.trans.counts, fin$est_counts)
+}
+rownames(data.trans.counts) <- rownames(fin)
+colnames(data.trans.counts) <- 
+
+colnam2<-c()
+for (i in (1:dataset_size))
+{
+  colnam2[i]<-Description[which(Description$Group==colnames(hisat.g)[i]),7]
 }
 colnames(hisat.t) <- colnam2
 colnames(hisat.g) <- colnam2
@@ -143,9 +152,6 @@ if(sum(size_of_batches)!=dim(hisat.g)[2]){
 samples<-sort(paste('B',Description$Batch,'_',Description$Condition,sep=''))
 names_col<-unique(samples)
 group_size<-length(samples)/length(names_col)
-#mainDir<-getwd()
-#dir.create("Results")
-#setwd(file.path(mainDir, "Results"))
 qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
 col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
 
@@ -163,305 +169,240 @@ filter <- filter1&filter2
 
 hisat.g.filtered<-hisat.g[filter,]
 hisat.g.filtered.log<-log2(hisat.g.filtered+0.5)
-
-samples_PNSL_SHAM<-c()
-for (i in c(1:88))
-{
-  if (length(grep('PNSL',samples[i]))==1)
-    samples_PNSL_SHAM[i]<-'PNSL'
-  else
-    samples_PNSL_SHAM[i]<-'SHAM'
-}
-
-names_col2<-unique(samples_PNSL_SHAM)
-
-
  
 ```
 
-# Heatmap for wildtype samlpes, raw data
+# Heatmap raw data
 
 ```{r,warning=FALSE,message=FALSE,fig.align='left'}
 
-heatmap.2(hisat.g.filtered.log[topVar,samples_new],
+IQR<- apply(hisat.g.filtered,1,IQR,na.rm=TRUE)
+topVar<-order(IQR, decreasing=TRUE)[1:100]
+heatmap.2(as.matrix(hisat.g.filtered.log[topVar,]),
           scale="row",
           hclust=function(x) hclust(x,method="average"),
           distfun=function(x) as.dist((1-cor(t(x)))/2),
           trace="none",
-          main= 'Heatmap for wildtype samples\n raw data',
+          main= 'Heatmap for 100 most varible samples\n raw data',
           density="none",
           labRow="",
           cexCol=0.5,dendrogram='column',key=FALSE)
-#dev.copy2pdf(device=dev.cur(),file="Heatmap raw data.pdf",out.type='pdf')
 
 ```
 
-# PCA for raw data
+# PCA raw data
 
-```{r,warning=FALSE,message=FALSE,fig.align='left',fig.height=7,fig.width=8}
+```{r,warning=FALSE,message=FALSE,fig.align='left',fig.height=7,fig.width=7}
 
 ############
 #PCA before
 ############
 Plot_PCA(hisat.g.filtered.log,samples,names_col,group_size,no_of_batches,size_of_batches,col_vector,"PCA before SVA")
-legend('topleft',legend=names_col,pch=rep(unique(symbols2),lwd=4,size_of_batches/group_size),col=unique(cols2),cex=0.7)
+#legend('topleft',legend=names_col,pch=rep(unique(symbols2),lwd=4,size_of_batches/group_size),col=unique(cols2),cex=0.7)
 
 
 ```
+# Violinplot raw data
 
+```{r,warning=FALSE,message=FALSE,fig.height = 5}
+Plot_violin(hisat.g.filtered,samples,group_size)
+```
 
 ```{r,warning=FALSE,message=FALSE,include=FALSE}
 
 ########
 ##limma
 ########
-# dge <- DGEList(counts=hisat.g.filtered, group=samples)
-# dge <- calcNormFactors(dge)
-## voom transformation
-# mod1 <- model.matrix(~0+as.factor(samples))
-# mod0 <- model.matrix(~1,data=as.factor(samples))
-# colnames(mod1) <- levels(factor(samples))
-# rownames(mod1) <- colnames(hisat.g.filtered)
-# v <- voom(dge,mod1,plot=FALSE)
-# to_sva <- 2^v$E
-# num.sv(as.matrix(hisat.g.filtered),mod1,method="leek") 
-# nsv <-25 #66->25
-# svseq <- svaseq(to_sva,mod1,mod0,const=0,n.sv=nsv)
-# newV=NULL
-# fsvaobj<-fsva(v$E,mod1,svseq,newdat=NULL)
 
-############################################################
-#Change WTP_SHAM and PNSL for the same group in all batches
-############################################################
-
-samples_new<-sub("(B[1-3]_WTP_SHAM)","WTP_SHAM",samples)
-samples_new<-sub("(B[1-3]_WTP_PNSL)","WTP_PNSL",samples_new)
-dge <- DGEList(counts=hisat.g.filtered, group=samples_new)
+dge <- DGEList(counts=hisat.g.filtered, group=samples)
 dge <- calcNormFactors(dge)
 ## voom transformation
-mod1 <- model.matrix(~0+as.factor(samples_new))
-mod0 <- model.matrix(~1,data=as.factor(samples_new))
-colnames(mod1) <- levels(factor(samples_new))
+mod1 <- model.matrix(~0+as.factor(samples))
+mod0 <- model.matrix(~1,data=as.factor(samples))
+colnames(mod1) <- levels(factor(samples))
 rownames(mod1) <- colnames(hisat.g.filtered)
 v <- voom(dge,mod1,plot=FALSE)
 to_sva <- 2^v$E
-num.sv(as.matrix(hisat.g.filtered),mod1,method="leek") 
-
-
-nsv <-64 #70->64->30
-svseq <- svaseq(to_sva,mod1,mod0,const=0,n.sv=nsv)
+nsv<-num.sv(as.matrix(hisat.g.filtered),mod1,method="leek") 
+an.error.occured <- TRUE
+while(an.error.occured==TRUE){
+   svseq <- try(svaseq(to_sva,mod1,mod0,const=0,n.sv=nsv),TRUE)
+   if(isTRUE(class(svseq)=="try-error")) { 
+     nsv <-nsv-1
+     next
+      } 
+   else { an.error.occured <- FALSE}
+}
 newV=NULL
 fsvaobj<-fsva(v$E,mod1,svseq,newdat=NULL)
 
-names_col_new<-names_col
-names_col_new<-sub("(B[1-3]_WTP_SHAM)","WTP_SHAM",names_col_new)
-names_col_new<-sub("(B[1-3]_WTP_PNSL)","WTP_PNSL",names_col_new)
+# names_col_new<-names_col
+# names_col_new<-sub(paste("(B\\d_",GR1,")",sep=''),paste(GR1),names_col_new)
+# names_col_new<-sub(paste("(B\\d_",GR2,")",sep=''),paste(GR2),names_col_new)
 ```
 
+# PCA with all factors removed `r nsv``
 
-
-```{r,warning=FALSE,message=FALSE,fig.align='left',fig.height=7,include=FALSE}
-
-##########
-#PCA after
-##########
-Plot_PCA(fsvaobj$db,samples,names_col_new,group_size,no_of_batches,size_of_batches,col_vector,paste("PCA after SVA, n.sv=",nsv))
-cols3<-unique(cols2)
-cols3<-c(cols3[1:12],cols3[5:6],cols3[13:18],cols3[5:6])
-legend("bottomright",legend=names_col,pch=rep(unique(symbols2),size_of_batches/group_size),col=cols3,cex=0.7)
-```
-```{r,warning=FALSE,message=FALSE,include=FALSE}
-
-nsv <-5 #70->64->30
-svseq <- svaseq(to_sva,mod1,mod0,const=0,n.sv=nsv)
-newV=NULL
-fsvaobj<-fsva(v$E,mod1,svseq,newdat=NULL)
-
-names_col_new<-names_col
-names_col_new<-sub("(B[1-3]_WTP_SHAM)","WTP_SHAM",names_col_new)
-names_col_new<-sub("(B[1-3]_WTP_PNSL)","WTP_PNSL",names_col_new)
-```
-
-# PCA after  svaseq with 5 factors removed
-
-```{r,warning=FALSE,message=FALSE,fig.align='left',fig.height=7,fig.width=8}
-
-##########
-#PCA after
-##########
-Plot_PCA(fsvaobj$db,samples,names_col_new,group_size,no_of_batches,size_of_batches,col_vector,paste("PCA after SVA, n.sv=",nsv))
-cols3<-unique(cols2)
-cols3<-c(cols3[1:12],cols3[5:6],cols3[13:18],cols3[5:6])
-legend("bottomleft",legend=names_col,pch=rep(unique(symbols2),size_of_batches/group_size),col=cols3,cex=0.7)
+```{r,warning=FALSE,message=FALSE,fig.height = 7, fig.width=7}
+Plot_PCA(fsvaobj$db,samples,names_col,group_size,no_of_batches,size_of_batches,col_vector,paste("PCA with all factors removed (",nsv,")"))
 ```
 
 ```{r,warning=FALSE,message=FALSE,include=FALSE}
-
-mod1_2 <- model.matrix(~0+as.factor(samples))
-mod0_2 <- model.matrix(~1,data=as.factor(samples))
-colnames(mod1_2) <- levels(factor(samples))
-rownames(mod1_2) <- colnames(hisat.g.filtered)
-rm(mmod1)
-mmod1 <- cbind(mod1_2, svseq$sv)
+mmod1 <- cbind(mod1, svseq$sv)
 colnames(mmod1) <- c(levels(factor(samples)), paste("X",1:nsv,sep=""))
 v2 <- voom(dge,mmod1,plot=FALSE)
-#fit = lmFit(v2,mmod1,method='robust', maxit=9999)
+an.error.occured <- TRUE
+while(an.error.occured==TRUE){
+  ok<-TRUE
+  fit<-tryCatch(lmFit(v2,mmod1,method='robust', maxit=9999),
+         warning=function(w){
 
-cm <- makeContrasts(#B1_CMV_PNSLvsB1_CMV_SHAM=B1_CMV_SHAM-B1_WTP_SHAM, # mutacja CMV
-                    #B1_DLX_PNSLvsB1_DLX_SHAM=B1_DLX_SHAM-B1_WTP_SHAM, #mutacja DLX
-                    B1_WTP_PNSLvsB1_WTP_SHAM=B1_WTP_PNSL-B1_WTP_SHAM, #uszkodzenie
-                    B1_CMV_UxM=B1_CMV_PNSL-B1_CMV_SHAM-B1_WTP_PNSL+B1_WTP_SHAM, #uszkodzeniexmutacja
-                    #B1_DLX_UxM=B1_DLX_PNSL-B1_DLX_SHAM-B1_WTP_PNSL+B1_WTP_SHAM, #uszkodzeniexmutacja
-                    
-                    #B2_CMV_PNSLvsB2_CMV_SHAM=B2_CMV_SHAM-B2_WTP_SHAM, #mutacja CMV
-                    #B2_DLX_PNSLvsB2_DLX_SHAM=B2_DLX_SHAM-B2_WTP_SHAM, #mutacja DLX
-                    #B2_NAV_PNSLvsB2_NAV_SHAM=B2_NAV_SHAM-B2_WTP_SHAM, #mutacja NAV
-                    B2_WTP_PNSLvsB2_WTP_SHAM=B2_WTP_PNSL-B2_WTP_SHAM, #uszkodzenie
-                    B2_CMV_UxM=B2_CMV_PNSL-B2_CMV_SHAM-B2_WTP_PNSL+B2_WTP_SHAM, #uszkodzeniexmutacja
-                    #B2_DLX_UxM=B2_DLX_PNSL-B2_DLX_SHAM-B2_WTP_PNSL+B2_WTP_SHAM, #uszkodzeniexmutacja
-                    #B2_NAV_UxM=B2_NAV_PNSL-B2_NAV_SHAM-B2_WTP_PNSL+B2_WTP_SHAM, #uszkodzeniexmutacja
-                    
-                    #B3_CMV_PNSLvsB3_CMV_SHAM=B3_CMV_SHAM-B3_WTP_SHAM, #mutacja CMV
-                    #B3_DLX_PNSLvsB3_DLX_SHAM=B3_DLX_SHAM-B3_WTP_SHAM, #mutacja DLX
-                    #B3_NAV_PNSLvsB3_NAV_SHAM=B3_NAV_SHAM-B3_WTP_SHAM, #mutacja NAV
-                    B3_WTP_PNSLvsB3_WTP_SHAM=B3_WTP_PNSL-B3_WTP_SHAM, #uszkodzenie
-                    B3_CMV_UxM=B3_CMV_PNSL-B3_CMV_SHAM-B3_WTP_PNSL+B3_WTP_SHAM, #uszkodzeniexmutacja
-                    #B3_DLX_UxM=B3_DLX_PNSL-B3_DLX_SHAM-B3_WTP_PNSL+B3_WTP_SHAM, #uszkodzeniexmutacja
-                    #B3_NAV_UxM=B3_NAV_PNSL-B3_NAV_SHAM-B3_WTP_PNSL+B3_WTP_SHAM, #uszkodzeniexmutacja
-                    
-                    levels=mmod1)
+        ok<<-FALSE
+         })
+  if (!ok)
+  {
+    nsv <-nsv-1
+    svseq <- svaseq(to_sva,mod1,mod0,const=0,n.sv=nsv)
+    mmod1 <- cbind(mod1, svseq$sv)
+    colnames(mmod1) <- c(levels(factor(samples)), paste("X",1:nsv,sep=""))
+    v2 <- voom(dge,mmod1,plot=FALSE)
+    next}
+  
+   else { an.error.occured <- FALSE}
+}	
+#20 minutes?
+newV=NULL
+fsvaobj<-fsva(v$E,mod1,svseq,newdat=NULL)
+```
+# Final PCA with `r nsv` factors removed
+
+```{r,warning=FALSE,message=FALSE,fig.height = 7}
+Plot_PCA(fsvaobj$db,samples,names_col,group_size,no_of_batches,size_of_batches,col_vector,paste("PCA with ",nsv," factors removed"))
+
+```
+
+
+```{r,warning=FALSE,message=FALSE,fig.height = 7}
+contrast <- config$CONTRAST_HiSat
+P_val<-config$P_VAL_HiSat
+cm <- makeContrasts(contrast,levels=mmod1)
 cf <- contrasts.fit(fit, cm)
-fe <- eBayes(cf);  ## needed for B in topTable, but we ignore this
-tt <- topTable(fe,num=Inf);
-pr<-1-propTrueNull(tt$P.Value,method='convest');
-cat('Conv.est.',pr,'gene level fit\n'); #0.99
-cfe<- eBayes(cf, proportion=pr);
-adj.method='BH';
-# 
-# mart<-useMart(biomart="ENSEMBL_MART_ENSEMBL",
-#               dataset='mmusculus_gene_ensembl',
-#               host='uswest.ensembl.org',
-#               ensemblRedirect=FALSE)
-# 
-# geneinfo<-getBM(c("external_gene_name","ensembl_gene_id"),"ensembl_gene_id",rownames(hisat.g.filtered),mart)
-# not_found<-hisat.g.filtered[-which(rownames(hisat.g.filtered)%in%geneinfo[,'ensembl_gene_id']),]
-# list_not_found <-cbind(NA,rownames(not_found))
-# colnames(list_not_found)<-c('external_gene_name','ensembl_gene_id')
-# geneinfo<-rbind(geneinfo,list_not_found)
-# rownames(geneinfo)<-geneinfo[,2]
+fe <- eBayes(cf)  ## needed for B in topTable, but we ignore this
+tt <- topTable(fe,num=Inf)
+pr<-1-propTrueNull(tt$P.Value,method='convest')
+cat('Conv.est.',pr,'gene level fit\n')
+cfe<- eBayes(cf, proportion=pr)
+adj.method='BH'
 
-for (name in colnames(cm))
-{
-  res<-topTable(cfe, number=Inf,
-                adjust.method=adj.method, coef=name,
+
+mart<-useMart(biomart="ENSEMBL_MART_ENSEMBL",
+              dataset='mmusculus_gene_ensembl',
+              host='uswest.ensembl.org')
+
+geneinfo<-getBM(c("external_gene_name","ensembl_gene_id"),"ensembl_gene_id",rownames(hisat.g.filtered),mart)
+not_found<-hisat.g.filtered[-which(rownames(hisat.g.filtered)%in%geneinfo[,'ensembl_gene_id']),]
+list_not_found <-cbind(NA,rownames(not_found))
+colnames(list_not_found)<-c('external_gene_name','ensembl_gene_id')
+geneinfo<-rbind(geneinfo,list_not_found)
+rownames(geneinfo)<-geneinfo[,2]
+
+res_limma<-topTable(cfe, number=Inf,
+                adjust.method=adj.method, coef=colnames(cm),
                 #p.value=0.05,
                 #lfc=0.5,
                 sort.by='none',
                 confint=TRUE)
-  score<-apply(res,1,function(x) (
+score<-apply(res_limma,1,function(x) (
     if (x[1]>0){
       x[2]}
     else
-    {-x[3]}  
+    {-x[3]}
   ))
-  res$score<-score
-  res$gene_name<-geneinfo[rownames(res),'external_gene_name']
-  res<-res[order(res$score,decreasing=TRUE),]
-  res2<-res[res$adj.P.Val<0.05,]
-  assign(paste(name),res)
-  assign(paste(name,'.pval',sep=''),res2)
-  write.csv(res2[,c(10,9,7,1)],paste(name,'.csv',sep=''))
-  
-  Gms<-res2[grep('Gm.*',res2$gene_name),]
-  Mirs<-res2[grep('Mir.*',res2$gene_name),]
-  Rest<-res2[!(rownames(res2))%in%c(rownames(Gms),rownames(Mirs)),]
-  assign(paste(name,'_coding',sep=''),Rest)
-  write.csv(Rest[,c(10,9,7,1)],paste(name,'_coding.csv',sep=''))
-  
-}
+res_limma$score<-score
+res_limma$gene_name<-geneinfo[rownames(res_limma),'external_gene_name']
+res_limma<-res_limma[order(res_limma$score,decreasing=TRUE),]
+res_limma2<-res_limma[res_limma$adj.P.Val<P_val,]
+write.csv(res_limma[,c(10,9,7,1)],paste(hisat_path,'/Results_limma.csv',sep=''))
+write.csv(res_limma2[,c(10,9,7,1)],paste(hisat_path,'/Results_limma_pVal_',P_val,'.csv',sep=''))
+
 ```
 
+# Number of differentially expressed genes with adjusted p-valye < `r P_val`: `r dim(res_limma2)[1] ``
+
+# Section 2 -EdgeR
+ 
 ```{r,warning=FALSE,message=FALSE,include=FALSE}
 
-unikatowe<-unique(c(rownames(B1_WTP_PNSLvsB1_WTP_SHAM.pval),
-                    rownames(B2_WTP_PNSLvsB2_WTP_SHAM.pval),
-                    rownames(B3_WTP_PNSLvsB3_WTP_SHAM.pval)))
-inter<-intersect(rownames(B1_WTP_PNSLvsB1_WTP_SHAM.pval),
-                    intersect(rownames(B2_WTP_PNSLvsB2_WTP_SHAM.pval),
-                    rownames(B3_WTP_PNSLvsB3_WTP_SHAM.pval)))
-samples_new<-grep("(B[1-3]_WTP_SHAM)",samples)
-samples_new<-c(samples_new,grep("(B[1-3]_WTP_PNSL)",samples))
-IQR<- apply(fsvaobj$db[,samples_new],1,IQR,na.rm=TRUE)
-topVar<-order(IQR, decreasing=TRUE)[1:500]
+### edgeR
+y <- DGEList(counts=hisat.g.filtered, group=samples)
+colnames(y) <- colnames(hisat.g.filtered,)
+keep <- filterByExpr(y)
+summary(keep)
+y <- y[keep, , keep.lib.sizes=FALSE]
+y <- calcNormFactors(y)
+design <- mmod1
+y <- estimateDisp(y, design, robust=TRUE)
+fit <- glmQLFit(y, design, robust=TRUE)
+qlf <- glmQLFTest(fit, contrast=cm)
+res_edgeR <- topTags(qlf, Inf)$table #default correction: BH
+res_edgeR2<- res_edgeR[res_edgeR$PValue<P_val,]
+write.csv(res_edgeR,paste(hisat_path,'/Results_edgeR.csv',sep=''))
+write.csv(res_edgeR2,paste(hisat_path,'/Results_edgeR_pVal_',P_val,'.csv',sep=''))
+#summary(decideTests(qlf))
 ```
 
-# Heatmap after svaseq
-
-```{r,warning=FALSE,message=FALSE,fig.align='left',fig.height=4}
-
-############
-#heatmap??
-############
+# Number of differentially expressed genes with adjusted p-valye < `r P_val`: `r dim(res_edgeR2)[1] ``
 
 
-heatmap.2(as.matrix(fsvaobj$db[topVar,samples_new]),
-          scale="row",
-          hclust=function(x) hclust(x,method="average"),
-          distfun=function(x) as.dist((1-cor(t(x)))/2),
-          trace="none",
-          main= 'Heatmap after svaseq',
-          density="none",
-          labRow="",
-          cexCol=0.5,dendrogram='column',key=FALSE)
-#dev.copy2pdf(device=dev.cur(),file="Heatmap after norm 1000.pdf",out.type='pdf')
-```
+# Section 3 -DeSeq
+ 
 ```{r,warning=FALSE,message=FALSE,include=FALSE}
 
-#####KEGG
-#####topGO
-
-
-# topDiffGenes <- function (allGene, thr=0.05)
-# {
-#   return(allGene < thr);
-# }
+##deseq2
+coldata <- data.frame(condition=samples, type=rep('single-read', length(samples)))
+dds <- DESeqDataSetFromMatrix(countData = round(hisat.g.filtered),
+                              colData = coldata,
+                              design= mmod1)
+dds <- DESeq(dds)
+tt <- results(dds, contrast=cm)
+res_DeSeq<- tt[is.finite(tt$adj.P.Val),]
+res_DeSeq2<-res_DeSeq[res_DeSeq$adj.P.Val<P_val,]
+write.csv(res_DeSeq,paste(hisat_path,'/Results_DeSeq.csv',sep=''))
+write.csv(res_DeSeq,paste(hisat_path,'/Results_DeSeq_pVal_',P_val,'.csv',sep=''))
+# #####topGO
 # 
 # 
-#   for (name in colnames(cm))
-#   {
-#     for (ont  in c('BP','MF','CC'))
-#     {
-#     geneList_WTP<-get(paste(name))$adj.P.Val
-#     names(geneList_WTP)<-rownames(get(paste(name)))
-#     WTP.BP <- new("topGOdata",
-#                   description = paste('Przew',name,'_',ont,sep=''), ontology = ont,
-#                   allGenes =geneList_WTP, geneSel = topDiffGenes,
-#                   nodeSize = 10,
-#                   annot = annFUN.org, mapping="org.Mm.eg.db",ID="ensembl")
-#     
-#     #WTP.resultFisher <- runTest(WTP.BP, algorithm = "classic", statistic = "fisher")
-#    # WTP.resultFisher.e <- runTest(WTP.BP, algorithm = "elim", statistic = "fisher")
-#     WTP.resultFisher.pc <- runTest(WTP.BP, algorithm = "parentchild", statistic = "fisher")
-#     
-#     used<-usedGO(WTP.BP)
-#     WTP.allRes <- GenTable(WTP.BP, #classicFisher = WTP.resultFisher,
-#                            parentchildFisher=WTP.resultFisher.pc,orderBy = "parentchildFisher",
-#                            ranksOf = "parentchildFisher",topNodes=length(used))
-#     
-#     assign(paste(name,'.GOs.',ont,sep=''),WTP.allRes)
-#  } } 
+# # topDiffGenes <- function (allGene, thr=0.05)
+# # {
+# #   return(allGene < thr);
+# # }
+# # 
+# # 
+# #   for (name in colnames(cm))
+# #   {
+# #     for (ont  in c('BP','MF','CC'))
+# #     {
+# #     geneList_WTP<-get(paste(name))$adj.P.Val
+# #     names(geneList_WTP)<-rownames(get(paste(name)))
+# #     WTP.BP <- new("topGOdata",
+# #                   description = paste('Przew',name,'_',ont,sep=''), ontology = ont,
+# #                   allGenes =geneList_WTP, geneSel = topDiffGenes,
+# #                   nodeSize = 10,
+# #                   annot = annFUN.org, mapping="org.Mm.eg.db",ID="ensembl")
+# #     
+# #     #WTP.resultFisher <- runTest(WTP.BP, algorithm = "classic", statistic = "fisher")
+# #    # WTP.resultFisher.e <- runTest(WTP.BP, algorithm = "elim", statistic = "fisher")
+# #     WTP.resultFisher.pc <- runTest(WTP.BP, algorithm = "parentchild", statistic = "fisher")
+# #     
+# #     used<-usedGO(WTP.BP)
+# #     WTP.allRes <- GenTable(WTP.BP, #classicFisher = WTP.resultFisher,
+# #                            parentchildFisher=WTP.resultFisher.pc,orderBy = "parentchildFisher",
+# #                            ranksOf = "parentchildFisher",topNodes=length(used))
+# #     
+# #     assign(paste(name,'.GOs.',ont,sep=''),WTP.allRes)
+# #  } } 
+# # 
 # 
-# write.csv(B1_CMV_UxM.GOs.BP[1:100,],'B1_CMV_UxM.GOs.BP.csv')
-# write.csv(B2_CMV_UxM.GOs.BP[1:100,],'B2_CMV_UxM.GOs.BP.csv')
-# write.csv(B3_CMV_UxM.GOs.BP[1:100,],'B3_CMV_UxM.GOs.BP.csv')
-# write.csv(B1_CMV_UxM.GOs.MF[1:100,],'B1_CMV_UxM.GOs.MF.csv')
-# write.csv(B2_CMV_UxM.GOs.MF[1:100,],'B2_CMV_UxM.GOs.MF.csv')
-# write.csv(B3_CMV_UxM.GOs.MF[1:100,],'B3_CMV_UxM.GOs.MF.csv')
-# write.csv(B1_CMV_UxM.GOs.CC[1:100,],'B1_CMV_UxM.GOs.CC.csv')
-# write.csv(B2_CMV_UxM.GOs.CC[1:100,],'B2_CMV_UxM.GOs.CC.csv')
-# write.csv(B3_CMV_UxM.GOs.CC[1:100,],'B3_CMV_UxM.GOs.CC.csv')
-# #####KEGG
-#pho_KEGGresult<-find_enriched_pathway(res2,species='mmu')
+```
 
-#egIDs <- stack(mget(rownames(hisat.g.filtered), org.Mm.egENSEMBL2EG, ifnotfound = NA))
-save.image('Data_all.RData')
+# Number of differentially expressed genes with adjusted p-valye < `r P_val`: `r dim(res_DeSeq2)[1] ``
