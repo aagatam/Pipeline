@@ -118,23 +118,15 @@ colnames(Description)[7]<-c("Name")
 
 
 data.trans.counts <- c()
-for (name in Description$GROUP)
+for (name in Description$Group)
 {
-  fin <- read.table(paste(kallisto_path,name,'/abundance.tsv', sep=""), header=TRUE, row.names=1)
+  fin <- read.table(paste(kallisto_path,'/',name,'/abundance.tsv', sep=""), header=TRUE, row.names=1)
   data.trans.counts <- cbind(data.trans.counts, fin$est_counts)
 }
 rownames(data.trans.counts) <- rownames(fin)
-colnames(data.trans.counts) <- 
+colnames(data.trans.counts) <- Description$Name
 
-colnam2<-c()
-for (i in (1:dataset_size))
-{
-  colnam2[i]<-Description[which(Description$Group==colnames(hisat.g)[i]),7]
-}
-colnames(hisat.t) <- colnam2
-colnames(hisat.g) <- colnam2
-hisat.g<-hisat.g[,order(colnames(hisat.g))]
-hisat.t<-hisat.t[,order(colnames(hisat.t))]
+kallisto.t <- data.trans.counts[,order(colnames(data.trans.counts))]
 
 ###################
 #Data description
@@ -146,7 +138,7 @@ for (i in (1:no_of_batches))
 {
   size_of_batches<-cbind(size_of_batches,length(which(Description$Batch==i)))
 }
-if(sum(size_of_batches)!=dim(hisat.g)[2]){
+if(sum(size_of_batches)!=dim(kallisto.t)[2]){
     stop('Sum of all batches sizes does not match input size')
     }
 samples<-sort(paste('B',Description$Batch,'_',Description$Condition,sep=''))
@@ -161,14 +153,14 @@ col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_co
 
 th1 <- 5
 th2 <- 2
-n1 <- round(dim(hisat.g)[2]/3)
+n1 <- round(dim(kallisto.t)[2]/3)
 n2 <- n1*2
-filter1 <- apply(hisat.g, 1, function(x) length(x[x>th1])>=n1)
-filter2 <- apply(hisat.g, 1, function(x) length(x[x>th2])>=n2)
+filter1 <- apply(kallisto.t, 1, function(x) length(x[x>th1])>=n1)
+filter2 <- apply(kallisto.t, 1, function(x) length(x[x>th2])>=n2)
 filter <- filter1&filter2
 
-hisat.g.filtered<-hisat.g[filter,]
-hisat.g.filtered.log<-log2(hisat.g.filtered+0.5)
+kallisto.t.filtered<-kallisto.t[filter,]
+kallisto.t.filtered.log<-log2(kallisto.t.filtered+0.5)
  
 ```
 
@@ -176,9 +168,9 @@ hisat.g.filtered.log<-log2(hisat.g.filtered+0.5)
 
 ```{r,warning=FALSE,message=FALSE,fig.align='left'}
 
-IQR<- apply(hisat.g.filtered,1,IQR,na.rm=TRUE)
+IQR<- apply(kallisto.t.filtered,1,IQR,na.rm=TRUE)
 topVar<-order(IQR, decreasing=TRUE)[1:100]
-heatmap.2(as.matrix(hisat.g.filtered.log[topVar,]),
+heatmap.2(as.matrix(kallisto.t.filtered.log[topVar,]),
           scale="row",
           hclust=function(x) hclust(x,method="average"),
           distfun=function(x) as.dist((1-cor(t(x)))/2),
@@ -197,7 +189,7 @@ heatmap.2(as.matrix(hisat.g.filtered.log[topVar,]),
 ############
 #PCA before
 ############
-Plot_PCA(hisat.g.filtered.log,samples,names_col,group_size,no_of_batches,size_of_batches,col_vector,"PCA before SVA")
+Plot_PCA(kallisto.t.filtered.log,samples,names_col,group_size,no_of_batches,size_of_batches,col_vector,"PCA before SVA")
 #legend('topleft',legend=names_col,pch=rep(unique(symbols2),lwd=4,size_of_batches/group_size),col=unique(cols2),cex=0.7)
 
 
@@ -205,7 +197,7 @@ Plot_PCA(hisat.g.filtered.log,samples,names_col,group_size,no_of_batches,size_of
 # Violinplot raw data
 
 ```{r,warning=FALSE,message=FALSE,fig.height = 5}
-Plot_violin(hisat.g.filtered,samples,group_size)
+Plot_violin(kallisto.t.filtered,samples,group_size)
 ```
 
 ```{r,warning=FALSE,message=FALSE,include=FALSE}
@@ -214,16 +206,16 @@ Plot_violin(hisat.g.filtered,samples,group_size)
 ##limma
 ########
 
-dge <- DGEList(counts=hisat.g.filtered, group=samples)
+dge <- DGEList(counts=kallisto.t.filtered, group=samples)
 dge <- calcNormFactors(dge)
 ## voom transformation
 mod1 <- model.matrix(~0+as.factor(samples))
 mod0 <- model.matrix(~1,data=as.factor(samples))
 colnames(mod1) <- levels(factor(samples))
-rownames(mod1) <- colnames(hisat.g.filtered)
+rownames(mod1) <- colnames(kallisto.t.filtered)
 v <- voom(dge,mod1,plot=FALSE)
 to_sva <- 2^v$E
-nsv<-num.sv(as.matrix(hisat.g.filtered),mod1,method="leek") 
+nsv<-num.sv(as.matrix(kallisto.t.filtered),mod1,method="leek") 
 an.error.occured <- TRUE
 while(an.error.occured==TRUE){
    svseq <- try(svaseq(to_sva,mod1,mod0,const=0,n.sv=nsv),TRUE)
@@ -299,8 +291,8 @@ mart<-useMart(biomart="ENSEMBL_MART_ENSEMBL",
               dataset='mmusculus_gene_ensembl',
               host='uswest.ensembl.org')
 
-geneinfo<-getBM(c("external_gene_name","ensembl_gene_id"),"ensembl_gene_id",rownames(hisat.g.filtered),mart)
-not_found<-hisat.g.filtered[-which(rownames(hisat.g.filtered)%in%geneinfo[,'ensembl_gene_id']),]
+geneinfo<-getBM(c("external_gene_name","ensembl_gene_id"),"ensembl_gene_id",rownames(kallisto.t.filtered),mart)
+not_found<-kallisto.t.filtered[-which(rownames(kallisto.t.filtered)%in%geneinfo[,'ensembl_gene_id']),]
 list_not_found <-cbind(NA,rownames(not_found))
 colnames(list_not_found)<-c('external_gene_name','ensembl_gene_id')
 geneinfo<-rbind(geneinfo,list_not_found)
@@ -322,8 +314,8 @@ res_limma$score<-score
 res_limma$gene_name<-geneinfo[rownames(res_limma),'external_gene_name']
 res_limma<-res_limma[order(res_limma$score,decreasing=TRUE),]
 res_limma2<-res_limma[res_limma$adj.P.Val<P_val,]
-write.csv(res_limma[,c(10,9,7,1)],paste(hisat_path,'/Results_limma.csv',sep=''))
-write.csv(res_limma2[,c(10,9,7,1)],paste(hisat_path,'/Results_limma_pVal_',P_val,'.csv',sep=''))
+write.csv(res_limma[,c(10,9,7,1)],paste(kallisto_path,'/Results_limma.csv',sep=''))
+write.csv(res_limma2[,c(10,9,7,1)],paste(kallisto_path,'/Results_limma_pVal_',P_val,'.csv',sep=''))
 
 ```
 
@@ -334,8 +326,8 @@ write.csv(res_limma2[,c(10,9,7,1)],paste(hisat_path,'/Results_limma_pVal_',P_val
 ```{r,warning=FALSE,message=FALSE,include=FALSE}
 
 ### edgeR
-y <- DGEList(counts=hisat.g.filtered, group=samples)
-colnames(y) <- colnames(hisat.g.filtered,)
+y <- DGEList(counts=kallisto.t.filtered, group=samples)
+colnames(y) <- colnames(kallisto.t.filtered,)
 keep <- filterByExpr(y)
 summary(keep)
 y <- y[keep, , keep.lib.sizes=FALSE]
@@ -346,8 +338,8 @@ fit <- glmQLFit(y, design, robust=TRUE)
 qlf <- glmQLFTest(fit, contrast=cm)
 res_edgeR <- topTags(qlf, Inf)$table #default correction: BH
 res_edgeR2<- res_edgeR[res_edgeR$PValue<P_val,]
-write.csv(res_edgeR,paste(hisat_path,'/Results_edgeR.csv',sep=''))
-write.csv(res_edgeR2,paste(hisat_path,'/Results_edgeR_pVal_',P_val,'.csv',sep=''))
+write.csv(res_edgeR,paste(kallisto_path,'/Results_edgeR.csv',sep=''))
+write.csv(res_edgeR2,paste(kallisto_path,'/Results_edgeR_pVal_',P_val,'.csv',sep=''))
 #summary(decideTests(qlf))
 ```
 
@@ -360,15 +352,15 @@ write.csv(res_edgeR2,paste(hisat_path,'/Results_edgeR_pVal_',P_val,'.csv',sep=''
 
 ##deseq2
 coldata <- data.frame(condition=samples, type=rep('single-read', length(samples)))
-dds <- DESeqDataSetFromMatrix(countData = round(hisat.g.filtered),
+dds <- DESeqDataSetFromMatrix(countData = round(kallisto.t.filtered),
                               colData = coldata,
                               design= mmod1)
 dds <- DESeq(dds)
 tt <- results(dds, contrast=cm)
 res_DeSeq<- tt[is.finite(tt$adj.P.Val),]
 res_DeSeq2<-res_DeSeq[res_DeSeq$adj.P.Val<P_val,]
-write.csv(res_DeSeq,paste(hisat_path,'/Results_DeSeq.csv',sep=''))
-write.csv(res_DeSeq,paste(hisat_path,'/Results_DeSeq_pVal_',P_val,'.csv',sep=''))
+write.csv(res_DeSeq,paste(kallisto_path,'/Results_DeSeq.csv',sep=''))
+write.csv(res_DeSeq,paste(kallisto_path,'/Results_DeSeq_pVal_',P_val,'.csv',sep=''))
 # #####topGO
 # 
 # 

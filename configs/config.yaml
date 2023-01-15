@@ -11,7 +11,7 @@ INPUTPATH: /home/agata/Documents/Work/Pipeline/Test_data
 METAFILE: configs/Description.csv
 
 ## paths for intermediate and final outputs
-FINALOUTPUT: /home/agata/Documents/Work/Pipeline/Output
+FINALOUTPUT: /Users/agatamuszynska/Documents/Work/Pipeline/Output
 
 ## is the sequencing paired-end or pair-end?
 END: "single"  # "single" or "pair"?
