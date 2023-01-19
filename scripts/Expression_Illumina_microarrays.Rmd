@@ -1,0 +1,534 @@
+---
+title: "Illumina HumanHT-12 v4 microarrays"
+output: pdf_document
+params:
+  inpath: "../configs"
+---
+
+
+
+```{r,warning=FALSE,message=FALSE,include=FALSE}
+
+library(ggrepel)
+
+
+packages<-c("knitr","RColorBrewer","VennDiagram","veccompare","ggplot2","yaml")
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE,repos = "http://cran.us.r-project.org")
+      library(x, character.only = TRUE)
+    }
+  }
+)
+if (!require("BiocManager", quietly = TRUE))
+   { install.packages("BiocManager",repos = "http://cran.us.r-project.org")
+BiocManager::install()}
+listOfBiocPackages<-c("topGO","limma","sva","AnnotationDbi","vsn","beadarray","illuminaHumanv4.db")
+notInstalled <- which( !listOfBiocPackages %in% rownames(installed.packages()) )
+## check there's still something left to install
+if( length(notInstalled) ) {
+    BiocManager::install(listOfBiocPackages[ notInstalled ])
+}
+lapply(listOfBiocPackages,library, character.only=TRUE)
+lapply(packages,require, character.only=TRUE)
+
+path_configs<-params$inpath
+#opts_knit$set(root.dir = path)
+knitr::opts_chunk$set(echo=FALSE)
+config<-read_yaml(paste(path_configs,'/config.yaml',sep=''),fileEncoding = "UTF-8")
+Description<-read.table(config$METAFILE_Illumina,header=TRUE,sep=';', stringsAsFactors=FALSE)
+```
+
+```{r,warning=FALSE,message=FALSE}
+#common
+idats = paste(Description$Path,Description$FIleName,sep='/')
+condition = Description$Condition
+nnames = paste(condition,Description$Repetition,Description$Batch, sep='_')# Healthy2 and Healthy6 are too young
+ref.condition = 'Healthy'
+names_col<-unique(condition)
+bgx = config$BGX_FILE #BGX file downloaded from Illumina site
+```
+# LIMMA and NEQC normalisation
+```{r,warning=FALSE,message=FALSE}
+########################################################limma########################################################
+data.limma  = read.idat(idats,bgx,annotation="ILMN_Gene")
+```
+## Number of probes
+```{r,warning=FALSE,message=FALSE}
+dim(data.limma)
+```
+```{r,warning=FALSE,message=FALSE}
+microarrays<-data.limma$targets$IDATfile # original names
+data.limma$targets$IDATfile<-nnames
+colnames(data.limma)<-nnames
+prop<-propexpr(data.limma) #Estimate the proportion of probes which are expressed 
+                     #above the level of the negative controls
+```
+## Estimate the proportion of probes which are expressed above the level of the negative controls
+```{r,warning=FALSE,message=FALSE}
+prop
+```
+
+## Normalisation, filtering and plots
+```{r,warning=FALSE,message=FALSE}
+data.limma.norm<-neqc(data.limma) # only regular probes are left for further analysis after this normalisation
+dim(data.limma.norm)
+colnames(data.limma.norm)<-nnames
+boxplot(log2(data.limma$E[data.limma$genes$Status=="regular", ]),range=0,las=2,xlab="",ylab=expression(log[2](intensity)),main = "Regular probes, not normalised",names=nnames)
+boxplot(log2(data.limma$E[data.limma$genes$Status=="negative", ]),range=0,las=2,xlab=" ",ylab=expression(log[2](intensity)),main = "Negative control probes",names=nnames)
+boxplot(data.limma.norm$E,range=0,las=2,xlab=" ",ylab=expression(log[2](intensity)),main = "Regular probes, NEQC normalized",names=nnames)
+#MDS plot
+plotMDS(data.limma.norm$E,labels=nnames, main= "Regular probes, NEQC normalized")
+
+ids<- as.character(rownames(data.limma.norm))
+ids2<- unlist (mget(ids,revmap(illuminaHumanv4ARRAYADDRESS),ifnotfound = NA))
+qual<- unlist(mget(ids2, illuminaHumanv4PROBEQUALITY,ifnotfound = NA)) #probe quality
+rownames(data.limma.norm)<-ids2
+```
+## Number of probes with given quality
+```{r,warning=FALSE,message=FALSE}
+table(qual)
+```
+```{r,warning=FALSE,message=FALSE}
+AveSignal<-rowMeans(data.limma.norm$E)
+boxplot(AveSignal~qual)
+rem <- qual=="No match" | qual =="Bad" # probes with quality "No match" or "Bad" were removed
+data.limma.norm.filt <-data.limma.norm[!rem,]
+```
+## Number of probes after normalization and filtering
+```{r,warning=FALSE,message=FALSE}
+dim(data.limma.norm)
+dim(data.limma.norm.filt)
+```
+```{r,warning=FALSE,message=FALSE}
+boxplot(data.limma.norm.filt$E,range=0,las=2,xlab=" ",ylab=expression(log[2](intensity)),main = "Regular probes, NEQC normalized and filtered",names=nnames)
+plotMDS(data.limma.norm.filt$E,labels=nnames, main= "Regular probes, NEQC normalized and filtered")
+#clustering
+IQR<- apply(data.limma.norm.filt$E,1,IQR,na.rm=TRUE)
+topVar<-order(IQR, decreasing=TRUE)[1:500]
+d<-dist(t(data.limma.norm.filt$E[topVar,]))
+plot(hclust(d),main="Regular probes, NEQC normalized and filtered")
+#heatmap
+heatmap(data.limma.norm.filt$E[topVar,],main="Regular probes, NEQC normalized and filtered")
+```
+## SVA and differential expression
+
+```{r,warning=FALSE,message=FALSE}
+#DE
+condition.fac<-as.factor(condition)
+design<-model.matrix(~0+condition.fac)
+colnames(design)<-levels(condition.fac)
+
+#Sva
+mod1 <- model.matrix(~0+condition.fac)
+mod0 <- model.matrix(~1,data=condition.fac)
+colnames(mod1) <- levels(condition.fac)
+rownames(mod1) <- colnames(data.limma.norm.filt)
+to_sva <- 2^data.limma.norm.filt$E
+num.sv(as.matrix(data.limma$E),mod1,method="leek") 
+nsv <-2 #12->10,6
+sv <- sva(to_sva,mod1,mod0,n.sv=nsv)
+newV=NULL
+fsvaobj<-fsva(data.limma.norm.filt$E,mod1,sv,newdat=NULL) # for prediciton only
+```
+## Plots for all possible factors removed
+```{r,warning=FALSE,message=FALSE}
+#######################with all factors removed#######################
+nsv2 <-10 #12->10,6
+sv2 <- sva(to_sva,mod1,mod0,n.sv=nsv2)
+newV2=NULL
+fsvaobj2<-fsva(data.limma.norm.filt$E,mod1,sv2,newdat=NULL) # for prediciton only
+#clustering
+IQR<- apply(fsvaobj2$db,1,IQR,na.rm=TRUE)
+topVar<-order(IQR, decreasing=TRUE)[1:500]
+d<-dist(t(fsvaobj2$db[topVar,]))
+plot(hclust(d),main="Regular probes, NEQC normalized and filtered + SVA all factors removed")
+#heatmap
+heatmap(data.limma.norm.filt$E[topVar,],main="Regular probes, NEQC normalized and filtered + SVA all factors removed")
+#MDS plot
+plotMDS(fsvaobj2$db,labels=nnames,main="Regular probes, NEQC normalized and filtered + SVA all factors removed")
+#######################with all factors removed#######################
+```
+## Plots for 3 factors removed and DEGs
+```{r,warning=FALSE,message=FALSE}
+#clustering
+IQR<- apply(fsvaobj$db,1,IQR,na.rm=TRUE)
+topVar<-order(IQR, decreasing=TRUE)[1:500]
+d<-dist(t(fsvaobj$db[topVar,]))
+plot(hclust(d),main="Regular probes, NEQC normalized and filtered + SVA")
+#heatmap
+heatmap(data.limma.norm.filt$E[topVar,],main="Regular probes, NEQC normalized and filtered + SVA")
+#MDS plot
+plotMDS(fsvaobj$db,labels=nnames,main="Regular probes, NEQC normalized and filtered + SVA")
+mod1_2 <- model.matrix(~0+condition.fac)
+mod0_2 <- model.matrix(~1,data=condition.fac)
+colnames(mod1_2) <- levels(condition.fac)
+rownames(mod1_2) <- colnames(data.limma.norm.filt)
+rm(mmod1)
+mmod1 <- cbind(mod1_2, sv$sv)
+colnames(mmod1) <- c(levels(condition.fac), paste("X",1:nsv,sep=""))
+mmod1<-mmod1[-c(2,13),] #remove too young persons
+fit = lmFit(data.limma.norm.filt$E[,-c(2,13)],mmod1,method='robust', maxit=9999)
+contrasts<-makeContrasts(Healthy-Patient,levels=mmod1)
+contr.fit<-eBayes(contrasts.fit(fit,contrasts))
+tt <- topTable(contr.fit,num=Inf);
+pr<-1-propTrueNull(tt$P.Value,method='convest');
+cat('Conv.est.',pr,'gene level fit\n'); #0.99
+cfe<- eBayes(contrasts.fit(fit,contrasts), proportion=pr);
+adj.method='BH';
+res.limma.neqc<-topTable(cfe, number=Inf,
+                adjust.method=adj.method, coef=1,
+                #p.value=0.05,
+                #lfc=0.5,
+                sort.by='none',
+                confint=TRUE)
+
+```
+##TopGO
+
+```{r,warning=FALSE,message=FALSE}
+######
+#topGO
+######
+
+library(topGO)
+topDiffGenes <- function (allGene, thr=0.05)
+{
+  return(allGene < thr);
+}
+
+geneList<-res.limma.neqc$adj.P.Val
+names(geneList)<-rownames(res.limma.neqc)
+limma.neqc.BP <- new("topGOdata",
+              description = "Parkinson BP", ontology = "BP",
+              allGenes =geneList, geneSel = topDiffGenes,
+              nodeSize = 10,
+              annot = annFUN.db,
+              affyLib="illuminaHumanv4")
+
+#resultFisher <- runTest(limma.neqc.BP , algorithm = "classic", statistic = "fisher")
+#resultFisher.e <- runTest(limma.neqc.BP , algorithm = "elim", statistic = "fisher")
+resultFisher.pc <- runTest(limma.neqc.BP , algorithm = "parentchild", statistic = "fisher")
+
+used<-usedGO(limma.neqc.BP)
+allRes <-  GenTable(limma.neqc.BP , parentchildFisher=resultFisher.pc, orderBy = "parentchild", ranksOf = "parentchild", topNodes = length(used))
+```
+
+# BeadArray + VSN and quantile normalisation
+
+```{r,warning=FALSE,message=FALSE}
+########################################################BeadArray########################################################
+data.bead= readIdatFiles(idatFiles = idats) #read idat files
+pData(data.bead)[,1] = nnames #change default name to user provided names
+rownames(pData(data.bead)) = nnames
+colnames(exprs(data.bead)) = nnames
+pData(data.bead)[,"sampleFac"] = condition #add conditions
+pData(data.bead)[,"sampleFac"] = as.factor(pData(data.bead)[,"sampleFac"]) #change into factors
+pData(data.bead)[,2] = relevel(pData(data.bead)[,2],ref = ref.condition) #relevel the factors
+```
+
+## Normalisation, filtering and plots
+```{r,warning=FALSE,message=FALSE}
+bead.eset = normaliseIllumina(BSData = data.bead,method = "vsn",transform = "none") # tronasform to none because vsn transforms it
+eset.exprs = as.data.frame(exprs(bead.eset)) #get exprs
+names(eset.exprs) = nnames
+
+is.na(eset.exprs) = do.call(cbind,lapply(eset.exprs, is.infinite)) #remove inf values if any.
+eset.exprs = as.matrix(eset.exprs[complete.cases(eset.exprs),])
+
+phenoData = new(Class = 'AnnotatedDataFrame',data = pData(data.bead)) # create new pData
+
+eset = ExpressionSet(assayData = as.matrix(eset.exprs),phenoData = phenoData,annotation = 'Humanv4') #create new expressionSet object
+eset = addFeatureData(eset,toAdd = c("SYMBOL", "PROBEQUALITY", "CODINGZONE", "PROBESEQUENCE", "GENOMICLOCATION")) #add other features from IlluminaV4 pacakge.
+exprs.df = cbind(exprs(eset),as(eset@featureData,Class = 'data.frame'))
+exprs.df = exprs.df[,-grep(pattern = 'Row.names',x = colnames(exprs.df))]
+no<-which(featureData(eset)$PROBEQUALITY=="Bad" | featureData(eset)$PROBEQUALITY=="No match")
+data.bead.filtered.vsn<-eset[-no,] # filetr out "Bad" or "No match" probes
+```
+## Number of genes after filtering and normalisation
+```{r,warning=FALSE,message=FALSE}
+dim(data.bead.filtered.vsn)
+```
+## SVA and differential expression
+```{r,warning=FALSE,message=FALSE}
+#DE
+condition.fac<-as.factor(condition)
+design<-model.matrix(~0+condition.fac)
+colnames(design)<-levels(condition.fac)
+
+#Sva
+mod1 <- model.matrix(~0+condition.fac)
+mod0 <- model.matrix(~1,data=condition.fac)
+colnames(mod1) <- levels(condition.fac)
+rownames(mod1) <- colnames(data.bead.filtered.vsn)
+to_sva <- 2^(exprs(data.bead.filtered.vsn))
+num.sv(as.matrix(exprs(data.bead.filtered.vsn)),mod1,method="leek") 
+nsv <-2 #8 -> 7
+sv <- sva(to_sva,mod1,mod0,n.sv=nsv)
+newV=NULL
+fsvaobj<-fsva(exprs(data.bead.filtered.vsn),mod1,sv,newdat=NULL) # for prediciton only
+#clustering
+IQR<- apply(fsvaobj$db,1,IQR,na.rm=TRUE)
+topVar<-order(IQR, decreasing=TRUE)[1:500]
+d<-dist(t(fsvaobj$db[topVar,]))
+plot(hclust(d),main="Regular probes, VSN normalized and filtered + SVA")
+#heatmap
+heatmap(fsvaobj$db[topVar,],main="Regular probes, VSN normalized and filtered + SVA")
+#MDS plot
+plotMDS(fsvaobj$db,labels=nnames,main="Regular probes, VSN normalized and filtered + SVA")
+
+mod1_2 <- model.matrix(~0+condition.fac)
+mod0_2 <- model.matrix(~1,data=condition.fac)
+colnames(mod1_2) <- levels(condition.fac)
+rownames(mod1_2) <- colnames(data.bead.filtered.vsn)
+rm(mmod1)
+mmod1 <- cbind(mod1_2, sv$sv)
+colnames(mmod1) <- c(levels(condition.fac), paste("X",1:nsv,sep=""))
+mmod1<-mmod1[-c(2,13),] #remove too young persons
+fit = lmFit(exprs(data.bead.filtered.vsn)[,-c(2,13)],mmod1,method='robust', maxit=9999)
+contrasts<-makeContrasts(Healthy-Patient,levels=mmod1)
+contr.fit<-eBayes(contrasts.fit(fit,contrasts))
+tt <- topTable(contr.fit,num=Inf);
+pr<-1-propTrueNull(tt$P.Value,method='convest');
+cat('Conv.est.',pr,'gene level fit\n'); #0.99
+cfe<- eBayes(contrasts.fit(fit,contrasts), proportion=pr);
+adj.method='BH';
+res.bead.vsn<-topTable(cfe, number=Inf,
+                adjust.method=adj.method, coef=1,
+                #p.value=0.05,
+                #lfc=0.5,
+                sort.by='none',
+                confint=TRUE)
+
+
+```
+## TopGO
+
+```{r,warning=FALSE,message=FALSE}
+######
+#topGO
+######
+
+topDiffGenes <- function (allGene, thr=0.05)
+{
+  return(allGene < thr);
+}
+
+geneList<-res.bead.vsn$adj.P.Val
+names(geneList)<-rownames(res.bead.vsn)
+bead.vsn.BP <- new("topGOdata",
+              description = "Parkinson BP", ontology = "BP",
+              allGenes =geneList, geneSel = topDiffGenes,
+              nodeSize = 10,
+              annot = annFUN.db,
+              affyLib="illuminaHumanv4")
+
+#bead.resultFisher <- runTest(bead.vsn.BP , algorithm = "classic", statistic = "fisher")
+#bead.resultFisher.e <- runTest(bead.vsn.BP , algorithm = "elim", statistic = "fisher")
+bead.resultFisher.pc <- runTest(bead.vsn.BP, algorithm = "parentchild", statistic = "fisher")
+
+used<-usedGO(bead.vsn.BP)
+bead.allRes <-  GenTable(bead.vsn.BP , parentchildFisher=bead.resultFisher.pc, orderBy = "parentchild", ranksOf = "parentchild", topNodes = length(used))
+```
+
+# BeadArray + quantile normalisation
+
+## Normalisation and filtering
+```{r,warning=FALSE,message=FALSE}
+bead.eset.quantile = normaliseIllumina(BSData = data.bead,method = "quantile",transform = "log2") # tronasform to none because vsn transforms it
+eset.exprs.quantile = as.data.frame(exprs(bead.eset.quantile)) #get exprs
+names(eset.exprs.quantile) = nnames
+
+is.na(eset.exprs.quantile) = do.call(cbind,lapply(eset.exprs.quantile, is.infinite)) #remove inf values if any.
+eset.exprs.quantile = as.matrix(eset.exprs.quantile[complete.cases(eset.exprs.quantile),])
+
+phenoData.quantile = new(Class = 'AnnotatedDataFrame',data = pData(data.bead)) # create new pData
+
+eset.quantile = ExpressionSet(assayData = as.matrix(eset.exprs.quantile),phenoData = phenoData.quantile,annotation = 'Humanv4') #create new expressionSet object
+eset.quantile = addFeatureData(eset.quantile,toAdd = c("SYMBOL", "PROBEQUALITY", "CODINGZONE", "PROBESEQUENCE", "GENOMICLOCATION")) #add other features from IlluminaV4 pacakge.
+exprs.df.quantile = cbind(exprs(eset.quantile),as(eset.quantile@featureData,Class = 'data.frame'))
+exprs.df.quantile = exprs.df.quantile[,-grep(pattern = 'Row.names',x = colnames(exprs.df.quantile))]
+no<-which(featureData(eset.quantile)$PROBEQUALITY=="Bad" | featureData(eset.quantile)$PROBEQUALITY=="No match")
+data.bead.filtered.quantile<-eset.quantile[-no,] # filetr out "Bad" or "No match" probes
+```
+## Number of genes after filtering and normalisation
+```{r,warning=FALSE,message=FALSE}
+dim(data.bead.filtered.quantile)
+```
+## SVA and differential expression
+```{r,warning=FALSE,message=FALSE}
+#DE
+condition.fac<-as.factor(condition)
+design<-model.matrix(~0+condition.fac)
+colnames(design)<-levels(condition.fac)
+
+#Sva
+mod1 <- model.matrix(~0+condition.fac)
+mod0 <- model.matrix(~1,data=condition.fac)
+colnames(mod1) <- levels(condition.fac)
+rownames(mod1) <- colnames(data.bead.filtered.quantile)
+to_sva <- 2^(exprs(data.bead.filtered.quantile))
+num.sv(as.matrix(exprs(data.bead.filtered.quantile)),mod1,method="leek") 
+nsv <-2 #8 -> 7
+sv <- sva(to_sva,mod1,mod0,n.sv=nsv)
+newV=NULL
+fsvaobj<-fsva(exprs(data.bead.filtered.quantile),mod1,sv,newdat=NULL) # for prediciton only
+#clustering
+IQR<- apply(fsvaobj$db,1,IQR,na.rm=TRUE)
+topVar<-order(IQR, decreasing=TRUE)[1:500]
+d<-dist(t(fsvaobj$db[topVar,]))
+plot(hclust(d),main="Regular probes, quantile normalized and filtered + SVA")
+#heatmap
+heatmap(fsvaobj$db[topVar,],main="Regular probes, quantile normalized and filtered + SVA")
+#MDS plot
+plotMDS(fsvaobj$db,labels=nnames,main="Regular probes, quantile normalized and filtered + SVA")
+
+mod1_2 <- model.matrix(~0+condition.fac)
+mod0_2 <- model.matrix(~1,data=condition.fac)
+colnames(mod1_2) <- levels(condition.fac)
+rownames(mod1_2) <- colnames(data.bead.filtered.quantile)
+rm(mmod1)
+mmod1 <- cbind(mod1_2, sv$sv)
+colnames(mmod1) <- c(levels(condition.fac), paste("X",1:nsv,sep=""))
+mmod1<-mmod1[-c(2,13),] #remove too young persons
+fit = lmFit(exprs(data.bead.filtered.quantile)[,-c(2,13)],mmod1,method='robust', maxit=9999)
+contrasts<-makeContrasts(Healthy-Patient,levels=mmod1)
+contr.fit<-eBayes(contrasts.fit(fit,contrasts))
+tt <- topTable(contr.fit,num=Inf);
+pr<-1-propTrueNull(tt$P.Value,method='convest');
+cat('Conv.est.',pr,'gene level fit\n'); #0.99
+cfe<- eBayes(contrasts.fit(fit,contrasts), proportion=pr);
+adj.method='BH';
+res.bead.quantile<-topTable(cfe, number=Inf,
+                adjust.method=adj.method, coef=1,
+                #p.value=0.05,
+                #lfc=0.5,
+                sort.by='none',
+                confint=TRUE)
+
+
+```
+## TopGO
+
+```{r,warning=FALSE,message=FALSE}
+######
+#topGO
+######
+
+topDiffGenes <- function (allGene, thr=0.05)
+{
+  return(allGene < thr);
+}
+b<-topDiffGenes(geneList)
+geneList<-res.bead.quantile$adj.P.Val
+names(geneList)<-rownames(res.bead.quantile)
+bead.quantile.BP <- new("topGOdata",
+              description = "Parkinson BP", ontology = "BP",
+              allGenes =geneList, geneSel = topDiffGenes,
+              nodeSize = 10,
+              annot = annFUN.db,
+              affyLib="illuminaHumanv4")
+
+#bead.quantile.resultFisher <- runTest(bead.quantile.BP , algorithm = "classic", statistic = "fisher")
+#bead.quantile.resultFisher.e <- runTest(bead.quantile.BP , algorithm = "elim", statistic = "fisher")
+bead.quantile.resultFisher.pc <- runTest(bead.quantile.BP, algorithm = "parentchild", statistic = "fisher")
+
+used<-usedGO(bead.quantile.BP)
+bead.quantile.allRes <- GenTable(bead.quantile.BP , parentchildFisher=bead.quantile.resultFisher.pc, orderBy = "parentchild", ranksOf = "parentchild", topNodes = length(used))#classicFisher = bead.quantile.resultFisher,
+                       #elimFisher = bead.quantile.resultFisher.e,
+
+
+```
+## Comparision
+```{r,warning=FALSE,message=FALSE}
+res.limma.neqc.pval<-res.limma.neqc[which(res.limma.neqc$adj.P.Val<0.05),]
+res.bead.vsn.pval<-res.bead.vsn[which(res.bead.vsn$adj.P.Val<0.05),]
+res.bead.quantile.pval<-res.bead.quantile[which(res.bead.quantile$adj.P.Val<0.05),]
+length(which(res.limma.neqc$adj.P.Val<0.05))
+length(which(res.bead.vsn$adj.P.Val<0.05))
+length(which(res.bead.quantile$adj.P.Val<0.05))
+
+common<-intersect(rownames(res.bead.quantile.pval),intersect(rownames(res.bead.vsn.pval),rownames(res.limma.neqc.pval)))
+length(common)
+```
+## Venn diagram
+```{r,warning=FALSE,message=FALSE}
+  venn.diagram(x=list('NEQC'=rownames(res.limma.neqc.pval),'QUANTILE'=rownames(res.bead.quantile.pval),'VSN'=rownames(res.bead.vsn.pval)),file='Venn_diagram_genes_nsv=2',fill = c("skyblue", "lightgreen", "mediumorchid"))
+```
+## TopGO  comparision
+```{r,warning=FALSE,message=FALSE}
+i<-1
+for (name in c ('allRes','bead.allRes','bead.quantile.allRes'))
+{
+  name2<-get(name)
+  #res.classic<-which(as.numeric(name2$classicFisher)<0.05)
+  #res.elim<-which(as.numeric(name2$elimFisher)<0.05)
+  res.pc<-which(as.numeric(name2$parentchildFisher)<0.05)
+  lista<-list(pc=name2[res.pc,]$Term)#classic=name2[res.classic,]$Term,elim=name2[res.elim,]$Term,
+  assign(paste('Results_list_',name,sep=''),lista)
+  i=i+1
+}
+```
+## TopGo only common
+```{r,warning=FALSE,message=FALSE}
+######
+#topGO
+######
+
+topDiffGenes <- function (allGene, comm=common)
+{
+  return(allGene%in%comm);
+}
+geneUniverse <- res.bead.quantile$adj.P.Val
+genesOfInterest <- common
+names(geneUniverse)<-rownames(res.bead.quantile)
+
+geneList <- factor(as.integer(names(geneUniverse) %in% genesOfInterest))
+names(geneList) <- names(geneUniverse)
+Common.BP <- new("topGOdata",
+              description = "Parkinson BP", ontology = "BP",
+              allGenes =geneList,
+              nodeSize = 10,
+              annot = annFUN.db,
+              affyLib="illuminaHumanv4")
+
+#bead.quantile.resultFisher <- runTest(bead.quantile.BP , algorithm = "classic", statistic = "fisher")
+#bead.quantile.resultFisher.e <- runTest(bead.quantile.BP , algorithm = "elim", statistic = "fisher")
+Common.resultFisher.pc <- runTest(Common.BP, algorithm = "parentchild", statistic = "fisher")
+
+used<-usedGO(Common.BP)
+Common.allRes <- GenTable(Common.BP , parentchildFisher=Common.resultFisher.pc, orderBy = "parentchild", ranksOf = "parentchild", topNodes = length(used))#classicFisher = bead.quantile.resultFisher,
+                       #elimFisher = bead.quantile.resultFisher.e,
+
+
+```
+## Venn diagrams
+```{r,warning=FALSE,message=FALSE}
+  #venn.diagram(x=list('NEQC'=Results_list_allRes$classic,'QUANTILE'=Results_list_bead.quantile.allRes$classic,'VSN'=Results_list_bead.allRes$classic),file='Venn_terms_classic_BP',fill = c("skyblue", "lightgreen", "mediumorchid"))
+  
+  #venn.diagram(x=list('NEQC'=Results_list_allRes$elim,'QUANTILE'=Results_list_bead.quantile.allRes$elim,'VSN'=Results_list_bead.allRes$elim),file='Venn_terms_elim_BP',fill = c("skyblue", "lightgreen", "mediumorchid"))
+  venn.diagram(x=list('NEQC'=Results_list_allRes$pc,'QUANTILE'=Results_list_bead.quantile.allRes$pc,'VSN'=Results_list_bead.allRes$pc),file='Venn_terms_pc_BP',fill = c("skyblue", "lightgreen", "mediumorchid"))
+ 
+```
+## Sortowanie
+
+```{r,warning=FALSE,message=FALSE}
+    
+for (name in c('res.limma.neqc','res.bead.quantile','res.bead.vsn'))
+{
+  name2<-get(name)
+  
+  score<-apply(name2,1,function(x) (
+        if (x[1]>0){
+          x[2]}
+        else
+        {-x[3]}  
+        ))
+  name.res<-paste(name,'.with_score',sep='')
+  results<-name2
+  results$score<-score
+  assign(name.res,results)
+}
+```
