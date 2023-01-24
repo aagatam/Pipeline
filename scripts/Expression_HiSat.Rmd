@@ -370,12 +370,16 @@ write.csv(res_DeSeq,paste(hisat_path,'/Results_DeSeq_pVal_',P_val,'.csv',sep='')
 
 # Number of differentially expressed genes with adjusted p-valye < `r P_val`: `r dim(res_DeSeq2)[1] ``
 
-```{r,warning=FALSE,message=FALSE,include=FALSE}
+# Ven diagram for all three methods
 
+```{r,warning=FALSE,message=FALSE}
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 
 ven<-venn.diagram(x=list('Limma'=rownames(res_limma2),'EdgeR'=rownames(res_edgeR2),'DeSeq2'=rownames(res_DeSeq2)),filename=NULL,fill = c("yellow","lightgreen","mediumorchid"))
 render.venn.diagram(ven)
+```
+
+```{r,warning=FALSE,message=FALSE,include=FALSE}
 
 # #####topGO
 topDiffGenes <- function (allGene, thr=0.05)

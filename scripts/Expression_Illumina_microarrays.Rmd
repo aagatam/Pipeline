@@ -586,3 +586,91 @@ plotMDS(fsvaobj$db,labels=nnames,main=paste("Regular probes, Quantile normalized
 
 # Quantile: Number of differentially expressed genes with adjusted p-value < `r P_val`: `r dim(res.bead.vsn2)[1] `
 
+# Venn diagram for all three methods
+
+```{r,warning=FALSE,message=FALSE}
+
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+
+ven<-venn.diagram(x=list('NEQC'=rownames(res.limma.neqc2),'VSN'=rownames(res.bead.vsn2),'Quantile'=rownames(res.bead.quantile2)),filename=NULL,fill = c("yellow","lightgreen","mediumorchid"))
+render.venn.diagram(ven)
+```
+
+
+```{r,warning=FALSE,message=FALSE, fig.show="hold", out.width="50%"}
+
+# #####topGO
+topDiffGenes <- function (allGene, thr=config$TH_GO_micro)
+{
+  return(allGene < thr);
+}
+
+
+for (method in c('limma.neqc','bead.vsn','bead.quantile'))
+  {
+    for (ont  in c('BP','MF','CC'))
+    {
+    name<-paste('res.',method,sep="")
+    if (dim(get(name))[1]!=0)
+    {
+    geneList<-get(name)$adj.P.Val
+    names(geneList)<-rownames(get(name))
+    res_GO <- new("topGOdata",
+              description = paste( method,sep=''), ontology = ont,
+              allGenes =geneList, geneSel = topDiffGenes,
+              nodeSize = 10,
+              annot = annFUN.db,
+              affyLib="illuminaHumanv4")
+
+    WTP.resultFisher.pc <- runTest(res_GO, algorithm = "parentchild", statistic = "fisher")
+
+    used<-usedGO(res_GO)
+    GO.allRes <- GenTable(res_GO, #classicFisher = WTP.resultFisher,
+                           parentchildFisher=WTP.resultFisher.pc,orderBy = "parentchildFisher",
+                           ranksOf = "parentchildFisher",topNodes=length(used))
+    colnames(GO.allRes)[6]<-"adj.P.Val"
+    GO.allRes2<-GO.allRes[GO.allRes$adj.P.Val<config$TH_GO_HiSat,]
+      # p.val.FP <- score( WTP.resultFisher.pc)
+      # lnames <- names(p.val.FP)[p.val.FP < 0.01]
+      # lgenes <- get_anno_genes(lnames, database = 'Mus.musculus',genes=data$gene_name_proper)
+      if (dim(GO.allRes2)[1]<10){b=dim(GO.allRes2)[1]
+      }else {b=10}
+      if (b!=0)
+      {
+      for (j in c(1:b))
+      {
+        if (GO.allRes2[j,]$adj.P.Val=="< 1e-30")
+        {
+          GO.allRes2[j,]$adj.P.Val=1e-30
+        }
+      }
+        
+      names_BP<-GO.allRes2$Term[b:1]
+      par(mai=c(1,3,1,1))
+      barplot(abs(log(as.numeric(GO.allRes2[b:1,]$adj.P.Val))),main=paste('Top',b,ont,'for',method,sep=' '),horiz=TRUE, names.arg = names_BP,xlim=c(0,50),las=1,col='darkblue',cex.names = 0.7,xlab="abs(log(p-value))")
+      }
+    write.csv(GO.allRes,paste(output_path,'/Results_',method,'_',ont,'.csv',sep=''))
+    write.csv(GO.allRes2,paste(output_path,'/Results_',method,'_',ont,'_',config$TH_GO_micro,'.csv',sep=''))
+    assign(paste(method,ont,sep='_'),GO.allRes2)
+    }
+  } 
+}
+
+```
+
+# Venn diagrams for all three methods
+
+```{r,warning=FALSE,message=FALSE}
+
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+
+ven<-venn.diagram(x=list('NEQC'=limma.neqc_BP$GO.ID,'VSN'=bead.vsn_BP$GO.ID,'Quantile'=bead.quantile_BP$GO.ID),
+                  filename=NULL,fill = c("yellow","lightgreen","mediumorchid"), main= "Biological Process")
+render.venn.diagram(ven)
+
+ven<-venn.diagram(x=list('NEQC'=limma.neqc_CC$GO.ID,'VSN'=bead.vsn_CC$GO.ID,'Quantile'=bead.quantile_CC$GO.ID),filename=NULL,fill = c("yellow","lightgreen","mediumorchid"), main= "Cellular Component")
+render.venn.diagram(ven)
+
+ven<-venn.diagram(x=list('NEQC'=limma.neqc_MF$GO.ID,'VSN'=bead.vsn_MF$GO.ID,'Quantile'=bead.quantile_MF$GO.ID),filename=NULL,fill = c("yellow","lightgreen","mediumorchid"), main= "Molecular FUnction")
+render.venn.diagram(ven)
+```
