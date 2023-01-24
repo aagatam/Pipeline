@@ -59,3 +59,6 @@ TH_GO_kallisto: 0.01
 #For Illumina microarrays
 METAFILE_Illumina: /Users/agatamuszynska/Documents/Work/Pipeline/configs/Description_Illumina.csv
 BGX_FILE: /Users/agatamuszynska/Documents/Work/Parkinson-microarrays/200793810038/HumanHT-12_V4_0_R2_15002873_B
+CONTRAST: HealthyvsPatient=Healthy-Patient
+P_VAL_micro: 0.05
+TH_GO_micro: 0.01
