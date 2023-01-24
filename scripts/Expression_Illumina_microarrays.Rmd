@@ -588,13 +588,18 @@ plotMDS(fsvaobj$db,labels=nnames,main=paste("Regular probes, Quantile normalized
 
 # Venn diagram for all three methods
 
-```{r,warning=FALSE,message=FALSE}
+```{r,warning=FALSE,message=FALSE,include=FALSE}
 
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 
 ven<-venn.diagram(x=list('NEQC'=rownames(res.limma.neqc2),'VSN'=rownames(res.bead.vsn2),'Quantile'=rownames(res.bead.quantile2)),filename=NULL,fill = c("yellow","lightgreen","mediumorchid"))
+```
+```{r,warning=FALSE,message=FALSE}
 render.venn.diagram(ven)
 ```
+\newpage
+
+# Barplots for top 10 terms for given GO term
 
 
 ```{r,warning=FALSE,message=FALSE, fig.show="hold", out.width="50%"}
@@ -657,20 +662,34 @@ for (method in c('limma.neqc','bead.vsn','bead.quantile'))
 }
 
 ```
+\newpage
 
 # Venn diagrams for all three methods
 
-```{r,warning=FALSE,message=FALSE}
+```{r,warning=FALSE,message=FALSE,include=FALSE}
 
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 
 ven<-venn.diagram(x=list('NEQC'=limma.neqc_BP$GO.ID,'VSN'=bead.vsn_BP$GO.ID,'Quantile'=bead.quantile_BP$GO.ID),
                   filename=NULL,fill = c("yellow","lightgreen","mediumorchid"), main= "Biological Process")
+```
+```{r,warning=FALSE,message=FALSE}
+
 render.venn.diagram(ven)
+```
+```{r,warning=FALSE,message=FALSE,include=FALSE}
 
 ven<-venn.diagram(x=list('NEQC'=limma.neqc_CC$GO.ID,'VSN'=bead.vsn_CC$GO.ID,'Quantile'=bead.quantile_CC$GO.ID),filename=NULL,fill = c("yellow","lightgreen","mediumorchid"), main= "Cellular Component")
+```
+```{r,warning=FALSE,message=FALSE}
+
 render.venn.diagram(ven)
+```
+```{r,warning=FALSE,message=FALSE,include=FALSE}
 
 ven<-venn.diagram(x=list('NEQC'=limma.neqc_MF$GO.ID,'VSN'=bead.vsn_MF$GO.ID,'Quantile'=bead.quantile_MF$GO.ID),filename=NULL,fill = c("yellow","lightgreen","mediumorchid"), main= "Molecular FUnction")
+```
+```{r,warning=FALSE,message=FALSE}
+
 render.venn.diagram(ven)
 ```

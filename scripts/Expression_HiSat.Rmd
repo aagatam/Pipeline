@@ -379,6 +379,8 @@ ven<-venn.diagram(x=list('Limma'=rownames(res_limma2),'EdgeR'=rownames(res_edgeR
 render.venn.diagram(ven)
 ```
 
+# Barplots for top 10 terms for given GO term
+
 ```{r,warning=FALSE,message=FALSE,include=FALSE}
 
 # #####topGO
