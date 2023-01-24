@@ -351,51 +351,81 @@ write.csv(res_edgeR2,paste(hisat_path,'/Results_edgeR_pVal_',P_val,'.csv',sep=''
  
 ```{r,warning=FALSE,message=FALSE,include=FALSE}
 
-##deseq2
+colnames(mmod1)<-sub('^X','SV',colnames(mmod1))
 coldata <- data.frame(condition=samples, type=rep('single-read', length(samples)))
 dds <- DESeqDataSetFromMatrix(countData = round(hisat.g.filtered),
                               colData = coldata,
-                              design= mmod1)
-dds <- DESeq(dds)
-tt <- results(dds, contrast=cm)
+                              design= ~0+condition)#mmod1)
+dds <- estimateSizeFactors(dds)
+dds <- estimateDispersions(dds)
+dds <- nbinomWaldTest(dds, maxit=500)
+
+rownames(cm)<-colnames(mmod1)
+tt <- results(dds, contrast=c("condition",names(cm[which(cm!=0),])[1],names(cm[which(cm!=0),])[2]))
 res_DeSeq<- tt[is.finite(tt$adj.P.Val),]
 res_DeSeq2<-res_DeSeq[res_DeSeq$adj.P.Val<P_val,]
 write.csv(res_DeSeq,paste(hisat_path,'/Results_DeSeq.csv',sep=''))
 write.csv(res_DeSeq,paste(hisat_path,'/Results_DeSeq_pVal_',P_val,'.csv',sep=''))
-# #####topGO
-# 
-# 
-# # topDiffGenes <- function (allGene, thr=0.05)
-# # {
-# #   return(allGene < thr);
-# # }
-# # 
-# # 
-# #   for (name in colnames(cm))
-# #   {
-# #     for (ont  in c('BP','MF','CC'))
-# #     {
-# #     geneList_WTP<-get(paste(name))$adj.P.Val
-# #     names(geneList_WTP)<-rownames(get(paste(name)))
-# #     WTP.BP <- new("topGOdata",
-# #                   description = paste('Przew',name,'_',ont,sep=''), ontology = ont,
-# #                   allGenes =geneList_WTP, geneSel = topDiffGenes,
-# #                   nodeSize = 10,
-# #                   annot = annFUN.org, mapping="org.Mm.eg.db",ID="ensembl")
-# #     
-# #     #WTP.resultFisher <- runTest(WTP.BP, algorithm = "classic", statistic = "fisher")
-# #    # WTP.resultFisher.e <- runTest(WTP.BP, algorithm = "elim", statistic = "fisher")
-# #     WTP.resultFisher.pc <- runTest(WTP.BP, algorithm = "parentchild", statistic = "fisher")
-# #     
-# #     used<-usedGO(WTP.BP)
-# #     WTP.allRes <- GenTable(WTP.BP, #classicFisher = WTP.resultFisher,
-# #                            parentchildFisher=WTP.resultFisher.pc,orderBy = "parentchildFisher",
-# #                            ranksOf = "parentchildFisher",topNodes=length(used))
-# #     
-# #     assign(paste(name,'.GOs.',ont,sep=''),WTP.allRes)
-# #  } } 
-# # 
-# 
 ```
 
 # Number of differentially expressed genes with adjusted p-valye < `r P_val`: `r dim(res_DeSeq2)[1] ``
+
+```{r,warning=FALSE,message=FALSE,include=FALSE}
+
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+
+ven<-venn.diagram(x=list('Limma'=rownames(res_limma2),'EdgeR'=rownames(res_edgeR2),'DeSeq2'=rownames(res_DeSeq2)),filename=NULL,fill = c("yellow","lightgreen","mediumorchid"))
+render.venn.diagram(ven)
+
+# #####topGO
+topDiffGenes <- function (allGene, thr=0.05)
+{
+  return(allGene < thr);
+}
+
+
+for (method in c('limma','edgeR','DeSeq'))
+  {
+    for (ont  in c('BP','MF','CC'))
+    {
+    name<-paste('res_',method,sep="")
+    if (dim(get(name))[1]!=0)
+    {
+    geneList<-get(name)$adj.P.Val
+    names(geneList)<-rownames(get(name))
+    res_GO <- new("topGOdata", ontology = ont,
+                  allGenes =geneList, geneSel = topDiffGenes,
+                  nodeSize = 10,
+                  annot = annFUN.org, mapping="org.Mm.eg.db",ID="ensembl")
+
+   #WTP.resultFisher <- runTest(res_GO, algorithm = "classic", statistic = "fisher")
+   # WTP.resultFisher.e <- runTest(res_GO, algorithm = "elim", statistic = "fisher")
+    WTP.resultFisher.pc <- runTest(res_GO, algorithm = "parentchild", statistic = "fisher")
+
+    used<-usedGO(res_GO)
+    GO.allRes <- GenTable(res_GO, #classicFisher = WTP.resultFisher,
+                           parentchildFisher=WTP.resultFisher.pc,orderBy = "parentchildFisher",
+                           ranksOf = "parentchildFisher",topNodes=length(used))
+    colnames(GO.allRes)[6]<-"adj.P.Val"
+    GO.allRes2<-GO.allRes[GO.allRes$adj.P.Val<config$TH_GO_HiSat,]
+    write.csv(GO.allRes,paste(hisat_path,'/Results_',method,'_',ont,'.csv',sep=''))
+    write.csv(GO.allRes2,paste(hisat_path,'/Results_',method,'_',ont,'_',config$TH_GO_HiSat,'.csv',sep=''))
+    assign(paste(method,ont,sep='_'),GO.allRes2)
+    }
+  } 
+}
+
+
+
+# futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+# 
+# ven<-venn.diagram(x=list('Limma'=limma_BP$GO.ID,'EdgeR'=edgeR_BP$GO.ID,'DeSeq2'=DeSeq_BP[,1]),
+#                   filename=NULL,fill = c("yellow","lightgreen","mediumorchid"), main= "Biological Process")
+# render.venn.diagram(ven)
+# 
+# ven<-venn.diagram(x=list('Limma'=rownames(limma_CC),'EdgeR'=rownames(edgeR_CC),'DeSeq2'=rownames(DeSeq_CC)),filename=NULL,fill = c("yellow","lightgreen","mediumorchid"), main= "Cellular Component")
+# render.venn.diagram(ven)
+# 
+# ven<-venn.diagram(x=list('Limma'=rownames(limma_MF),'EdgeR'=rownames(edgeR_MF),'DeSeq2'=rownames(DeSeq_MF)),filename=NULL,fill = c("yellow","lightgreen","mediumorchid"), main= "Molecular FUnction")
+# render.venn.diagram(ven)
+```

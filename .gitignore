@@ -7,9 +7,11 @@ Test_data/
 Spladder_files/
 logs/
 Expression_HiSat_files/
+Expression_Illumina_microarrays_files/
 configs/Description_N.csv
 .DS_store
 .snakemake
 .Rhistory
 Spladder.pdf
 Out_name.pdf
+Expression_Illumina_microarrays.pdf
