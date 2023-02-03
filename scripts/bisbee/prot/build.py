@@ -22,13 +22,6 @@ print(sys.version_info)
 print(pd._version)
 print(bb.__file__)
 
-#
-# events_file= '/home/agata/Documents/Work/Dell_work/bisbee/Input/ES_output.bisbeeCounts.csv'
-# event_type='ES'
-# aapad=int(0)
-# out_name='ES_test'
-# ensemble_release=int(104)
-# ref_fasta='/home/agata/Documents/Work/Dell_work/bisbee/Mus_musculus.GRCm39.dna.toplevel.fa'
 events_file=sys.argv[1]
 event_type=sys.argv[2]
 aapad=int(sys.argv[3])

@@ -109,17 +109,15 @@ for (event in events)
 }
 
 
-tab_to_chose<-get(paste(params$event_type,'bisbee',sep='_')) #<- stad bierzemy junctions
-tab_to_chose_merged<-get(paste(params$event_type,'merged',sep='_')) #<-stad bierzemy reszte 
-chosen_event<-params$event #5014
-#"mult_exon_skip_5430" 'mult_exon_skip_1188'
-
+tab_to_chose<-get(paste(params$event_type,'bisbee',sep='_')) 
+tab_to_chose_merged<-get(paste(params$event_type,'merged',sep='_')) 
+chosen_event<-params$event
 
 NO<-which(tab_to_chose$event_id==chosen_event)
 NO2<-which(tab_to_chose_merged$Event_ID==chosen_event)
 
-ev_coord<-tab_to_chose[NO,]$event_jid #<-wybrany event
-gene<-tab_to_chose[NO,]$gene #<-gen dla tego eventu
+ev_coord<-tab_to_chose[NO,]$event_jid 
+gene<-tab_to_chose[NO,]$gene 
 ipr_acc<-tab_to_chose_merged[NO2,]$IPAnnotAcc
 tr_id<-tab_to_chose_merged[NO2,]$TranscirptID[1]
 
@@ -127,11 +125,8 @@ tr_id<-tab_to_chose_merged[NO2,]$TranscirptID[1]
 mart<-useMart(biomart="ENSEMBL_MART_ENSEMBL",
               dataset='mmusculus_gene_ensembl',
               host='useast.ensembl.org')
-#uniProt <- useMart("unimart", dataset="uniprot")
 
 ensemble2gene <- getBM(attributes=c("ensembl_transcript_id","external_gene_name",
-                                    #'uniprot_gn_symbol',
-                                    #'uniprot_gn_id',
                                     "interpro","ensembl_peptide_id"),
                        filters = c("ensembl_transcript_id"),
                        values= list(tr_id),
@@ -223,17 +218,15 @@ ensembl=pyensembl.EnsemblRelease(104,'mus_musculus')
 event_coords=jid_to_coords(r.ev_coord)
 transcript_table=find_matching_transcripts(ensembl,r.gene,event_coords) 
 transcript_table["matching_isoform"]
-matching_isoform=transcript_table.loc[r.tr_id]["matching_isoform"] #<-tutaj podaj transkrypt, który chceszf
+matching_isoform=transcript_table.loc[r.tr_id]["matching_isoform"] 
 transcript=ensembl.transcript_by_id(r.tr_id)
 coding_coord=pd.DataFrame(transcript.coding_sequence_position_ranges,columns=['start','end'])
 coding_coord=coding_coord.append(pd.Series({'start':min(transcript.stop_codon_positions),'end':max(transcript.stop_codon_positions)}),ignore_index=True).sort_values(by="start")
   
-new_coord=get_new_coord(matching_isoform,event_coords,coding_coord) #<-brakuje jeszcze old_coord= tu trzeba wziąć z R z trt
-
+new_coord=get_new_coord(matching_isoform,event_coords,coding_coord) 
 ```
 
 ```{r,include=FALSE,warning=FALSE,message=FALSE,echo=FALSE}
-#Plots
 load(paste(spl_path,'To_plots.RData',sep='/'))
 ah <- AnnotationHub()
 ahdb<-AnnotationHub::query(ah, "EnsDb.Mmusculus.v104")
@@ -266,10 +259,8 @@ txid <- protein_gnm[[1]]$tx_id[1]
 
 ## Get a GRanges for the transcript
 trt <- getGeneRegionTrackForGviz(edb, filter = TxIdFilter(txid))
-#trt_new <- getGeneRegionTrackForGviz(edb, filter = TxIdFilter("ENSMUST00000153076"))
 
 dt = data.table(as.data.frame(trt))
-#dim(py$new_coord)
 df <- data.frame(matrix(unlist(py$new_coord), nrow=dim(py$new_coord)[1], byrow=FALSE),stringsAsFactors=FALSE)
 df$width<-df$X2-df$X1
 colnames(df)<-c("start","end","width")
@@ -296,9 +287,6 @@ dmns2_nodup<-dmns2[!duplicated(dmns2), ]
 ## Since we're using Ensembl chromosome names we have to set
 
 options(ucscChromosomeNames=FALSE)
-#alTrack <- AlignmentsTrack(BAM_file, isPaired = F, background.title="brown")
-#displayPars(alTrack) <- list(background.panel = "#FFFEDB", col = NULL)
-
 chrom<-df$seqnames[1]
 ```
 
@@ -413,7 +401,6 @@ for (type in type_ev)
   }
 }
 
-
 #For multiple exon skip and exon skip- 1st is start, 2nd is end
 if(length(list_MULT)!=0)
 {
@@ -446,8 +433,6 @@ for (i in c(1:dim(mat_A3)[1]))
 
 if(sum(is.na(mat_A3))==0 && dim(mat_A3)[1]!=0){
 starts_A3<-as.vector(mat_A3[,2])
-#which_A3<-match(c(as.numeric(mat_A3[,1])),trt@ranges@start)
-#ends_A3<-trt@ranges@start[which_A3]+trt@ranges@width[which_A3]-1
 ends_A3<-as.numeric(starts_A3)+20
 } else
 {
@@ -455,8 +440,7 @@ ends_A3<-as.numeric(starts_A3)+20
   ends_A3<-c()
 }
 
-
-#For A5 - find matching end and width in ref?
+#For A5 - find matching end and width in ref
 if (dim(mat_A5)[1]!=0)
 {
 for (i in c(1:dim(mat_A5)[1]))
@@ -469,8 +453,6 @@ for (i in c(1:dim(mat_A5)[1]))
 }
 if(sum(is.na(mat_A5))==0 && dim(mat_A5)[1]!=0){
 ends_A5<-as.numeric(mat_A5[,2])
-#which_A5<-match(c(round(as.numeric(mat_A5[,1]),-1)),round(trt@ranges@start+trt@ranges@width-1,-1))
-#starts_A5<-as.numeric(mat_A5[,1])-trt@ranges@width[which_A5]
 starts_A5<-ends_A5-20
 } else
 {
@@ -478,8 +460,6 @@ starts_A5<-ends_A5-20
   ends_A5<-c()
 }
 
-
-#For mutex exons -
 if(length(list_MUTEX)!=0)
 {
 starts_MUTEX<-nth_element(unlist(list_MUTEX),1,2)
@@ -497,17 +477,15 @@ names_MULT<-c()
  i=1
 for (element in list_MULT)
 {
-  #print(element)
   rep_names<-length(element)/2
   names_MULT<-c(names_MULT, rep(add_NN[grep('mult',add_NN)][i],rep_names))
   i=i+1
 }
  
 names_MUTEX<-c()
- i=1
+i=1
 for (element in list_MUTEX)
 {
-  #print(element)
   rep_names<-length(element)/2
   names_MUTEX<-c(names_MUTEX, rep(add_NN[grep('mutex',add_NN)][i],rep_names))
   i=i+1
@@ -604,8 +582,6 @@ for (i in c(1:dim(mat_A3_ON)[1]))
 }
 if(sum(is.na(mat_A3_ON))==0 && dim(mat_A3_ON)[1]!=0){
 starts_A3_ON<-as.vector(mat_A3_ON[,2])
-#which_A3_ON<-match(c(as.numeric(mat_A3_ON[,1])),trt@ranges@start)
-#ends_A3_ON<-trt@ranges@start[which_A3_ON]+trt@ranges@width[which_A3_ON]-1
 ends_A3_ON<-as.numeric(starts_A3_ON)+20
 
 } else
@@ -613,7 +589,7 @@ ends_A3_ON<-as.numeric(starts_A3_ON)+20
   starts_A3_ON<-c()
   ends_A3_ON<-c()
 }
-#For A5 - find matching end and width in ref?
+#For A5 - find matching end and width in ref
 if(dim(mat_A5_ON)[1]!=0){
 for (i in c(1:dim(mat_A5_ON)[1]))
 {
@@ -625,15 +601,13 @@ for (i in c(1:dim(mat_A5_ON)[1]))
 }
 if(sum(is.na(mat_A5_ON))==0 && dim(mat_A5_ON)[1]!=0){
 ends_A5_ON<-as.numeric(mat_A5_ON[,2])
-#which_A5_ON<-match(c(round(as.numeric(mat_A5_ON[,1]),-1)),round(trt@ranges@start+trt@ranges@width-1,-1))
-#starts_A5_ON<-as.numeric(mat_A5_ON[,1])-trt@ranges@width[which_A5_ON]
 starts_A5_ON<-ends_A5_ON-20
 } else
 {
   starts_A5_ON<-c()
   ends_A5_ON<-c()
 }
-#For mutex exons -
+
 if(length(list_MUTEX_ON)!=0)
 {
 starts_MUTEX_ON<-nth_element(unlist(list_MUTEX_ON),1,2)
@@ -651,7 +625,6 @@ names_MULT_ON<-c()
  i=1
 for (element in list_MULT_ON)
 {
-  #print(element)
   rep_names<-length(element)/2
   names_MULT_ON<-c(names_MULT_ON, rep(add_ON[grep('mult',add_ON)][i],rep_names))
   i=i+1
@@ -675,7 +648,6 @@ names_MUTEX_ON<-c()
  i=1
 for (element in list_MUTEX_ON)
 {
-  #print(element)
   rep_names<-length(element)/2
   names_MUTEX_ON<-c(names_MUTEX_ON, rep(add_ON[grep('mutex',add_ON)][i],rep_names))
   i=i+1
@@ -683,8 +655,6 @@ for (element in list_MUTEX_ON)
  
 names_ON<-c(names_A3_ON,names_MULT_ON,add_ON[grep('^exon_skip',add_ON)],names_A5_ON,
          names_MUTEX_ON)
-#group_ON<-c(rep(1,length(grep('alt_3',add_ON))),rep(2,length(starts_MULT_ON)),rep(3,length(grep('^exon_skip',add_ON))),rep(4,length(grep('alt_5',add_ON))),rep(5,length(grep('mutex',add_ON))))
-
 
 match_name<-sub('(_)(\\d+$)','\\.\\2',chosen_event)
 remove<-which(names_ON==match_name)
@@ -700,19 +670,15 @@ aTrack_ON <- AnnotationTrack(start = as.numeric(starts_ON), width = wid_ON, id=n
                           chromosome = chrom, name = "Additional events new+old",shape="box",group = names_ON,
                                   groupAnnotation = "id",
                                   just.group = "above",background.title='blue')
-#plotTracks(aTrack, shape = "box", fontcolor.feature = "darkblue",extend.left = 0.5)
 }else {aTrack_ON<-NA}
 if (length(starts)>0 && length(ends)>0)
 {
 names_NN<-c(names_A3,names_MULT,add_NN[grep('^exon_skip',add_NN)],names_A5,
          names_MUTEX)
-#group_NN<-c(rep(1,length(grep('alt_3',add_ON))),rep(2,length(starts_MULT_ON)),rep(3,length(grep('^exon_skip',add_ON))),rep(4,length(grep('alt_5',add_ON))),rep(5,length(grep('mutex',add_ON))))
 aTrack_NN <- AnnotationTrack(start = as.numeric(starts), width = wid, id=names_NN,
                           chromosome = chrom, name = "Additional events new+new",shape="box",group = names_NN,
                                   groupAnnotation = "id",
                                   just.group = "above",background.title='blue')
-#plotTracks(aTrack_NN, shape = "box", fontcolor.feature = "darkblue",extend.left = 0.5)
-
 }else {aTrack_NN<-NA}
 coord_to_comp<-as.data.frame(cbind(unlist(py$new_coord[,1]),unlist(py$new_coord[,2])))
 colnames(coord_to_comp)<-c('start','stop')
@@ -754,8 +720,6 @@ if(is.na(aTrack_NN) && is.na(aTrack_ON))
                                         GR_original,
                                         GR_detected,
                                         alTrack
-                                        #aTrack_ON,
-                                        #aTrack_NN,
   ),
   transcriptAnnotation = "transcript",
   start = range(hajlajt)[1],end=range(hajlajt)[2],chromosome=chrom)
@@ -768,7 +732,6 @@ if(is.na(aTrack_NN) && is.na(aTrack_ON))
                                         GR_detected,
                                         alTrack,
                                         aTrack_ON
-                                        #aTrack_NN,
   ),
   transcriptAnnotation = "transcript",
   start = range(hajlajt)[1],end=range(hajlajt)[2],chromosome=chrom)
@@ -779,7 +742,6 @@ if(is.na(aTrack_NN) && is.na(aTrack_ON))
                                         GR_original,
                                         GR_detected,
                                         alTrack,
-                                        #aTrack_ON,
                                         aTrack_NN),
                        transcriptAnnotation = "transcript",
                        start = range(hajlajt)[1],end=range(hajlajt)[2],chromosome=chrom)

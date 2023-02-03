@@ -1,10 +1,8 @@
 from Bio import SeqIO
 import sys
-#
+
 input_fasta=sys.argv[1]
 out_name=sys.argv[2]
-# out_name='ES_test'
-# input_fasta='//home/agata/Documents/Work/Dell_work/bisbee/Pipeline_test/Output/Test/genome/bisbee/exon_skip.altSeq.fasta'
 output_fasta='.'.join([out_name,"final.fasta"])
 
 
