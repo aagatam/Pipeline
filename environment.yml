@@ -1,41 +1,37 @@
-name: Pipeline_newestR
+name: Pipeline
 channels:
-  - conda-forge
   - bioconda
-  - r
   - defaults
+  - conda-forge
 dependencies:
   - snakemake=7.19.1
-  - graphviz
-  - r-tinytex
-# command tool installs
+  - r-tinytex=0.43
   - r-base=4.2.1
-  - python
-  - pip
-  - dsrc
-#  - interproscan
-# r channel installs
-#  - r-yaml=2.2.0
-#  - r-statmod=1.4.30
-#  - r-gplots=3.0.1
-  - r-rmarkdown
-  - r-curl
-# #  - r-magrittr
-# # bioconda channel installs
-  - fastqc=0.11
-  - qualimap=2.2.2
-  - multiqc
-  - kallisto=0.48
-  - hisat2= 2.2.1
+  - python=3.11.0
+  - dsrc=2015.06.04
+  - r-rmarkdown=2.19
+  - r-curl=4.3.3
+  - fastqc=0.11.9
+  - qualimap=2.2.2d
+  - multiqc=1.13
+  - kallisto=0.48.0
+  - hisat2=2.2.1
+  - bioconductor-biobase=2.58.0
+  - bioconductor-biocgenerics=0.44.0
+  - bioconductor-biocio=1.8.0
+  - bioconductor-biocparallel=1.32.0
+  - bioconductor-biostrings=2.66.0
+  - bioconductor-genomicalignments
+  - bioconductor-genomicranges=1.50.0
+  - bioconductor-iranges=2.32.0
+  - bioconductor-matrixgenerics=1.10.0
+  - bioconductor-rtracklayer=1.58.0
+  - numpy=1.24.1
+  - pandas=1.5.2
+  - pip=22.3.1
+  - pyensembl=2.2.4
+  - samtools=1.16.1
   - stringtie=2.2.1
-  - pyensembl
-# #   - bioconductor-biomart
-  - bioconductor-rtracklayer
   - pip:
     - spladder==2.4.3
-    - numpy
-  #  - pyensembl
-    - Bio
-    - pandas
-#export LANG=en_US.utf-8
-#export LC_ALL=UTF-8
+    - bio==1.5.3
