@@ -1,7 +1,7 @@
 import pandas as pd
 configfile: "configs/config.yaml"
 
-samples = pd.read_csv(config["METAFILE"], sep = ';', header = 0)['Group']
+samples = pd.read_csv(config["METAFILE"], sep = ',', header = 0)['Group']
 end = config["END"]
 index_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/trans"
 compressed = config["COMPRESSED"]

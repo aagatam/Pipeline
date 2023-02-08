@@ -319,7 +319,7 @@ write.csv(res_limma2[,c(10,9,7,1)],paste(hisat_path,'/Results_limma_pVal_',P_val
 
 ```
 
-# Number of differentially expressed genes with adjusted p-valye < `r P_val`: `r dim(res_limma2)[1] ``
+# Number of differentially expressed genes with adjusted p-value < `r P_val`: `r dim(res_limma2)[1] `
 
 # Section 2 -EdgeR
  
@@ -344,7 +344,7 @@ write.csv(res_edgeR2,paste(hisat_path,'/Results_edgeR_pVal_',P_val,'.csv',sep=''
 #summary(decideTests(qlf))
 ```
 
-# Number of differentially expressed genes with adjusted p-valye < `r P_val`: `r dim(res_edgeR2)[1] ``
+# Number of differentially expressed genes with adjusted p-value < `r P_val`: `r dim(res_edgeR2)[1] `
 
 
 # Section 3 -DeSeq
@@ -369,7 +369,7 @@ write.csv(res_DeSeq,paste(hisat_path,'/Results_DeSeq.csv',sep=''))
 write.csv(res_DeSeq,paste(hisat_path,'/Results_DeSeq_pVal_',P_val,'.csv',sep=''))
 ```
 
-# Number of differentially expressed genes with adjusted p-valye < `r P_val`: `r dim(res_DeSeq2)[1] ``
+# Number of differentially expressed genes with adjusted p-value < `r P_val`: `r dim(res_DeSeq2)[1] `
 
 # Ven diagram for all three methods
 
@@ -382,7 +382,7 @@ render.venn.diagram(ven)
 
 # Barplots for top 10 terms for given GO term
 
-```{r,warning=FALSE,message=FALSE,include=FALSE}
+```{r,warning=FALSE,message=FALSE}
 
 # #####topGO
 topDiffGenes <- function (allGene, thr=0.05)
