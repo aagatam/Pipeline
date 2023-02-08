@@ -100,7 +100,7 @@ else:
         input:
             uncompress = temp(final_path + "/uncompressed/{sample}.out.fastq")
         output:
-            read_trim = temp(intermediate_path + "/{sample}.out_trimmed.fq")
+            read_trim = temp(intermediate_path + "/{sample}.out_trimmed.fq.gz")
         params:
             outputpath = intermediate_path
         conda: "configs/trim_env.yaml"
