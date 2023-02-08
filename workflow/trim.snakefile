@@ -1,29 +1,25 @@
 import pandas as pd
-configfile: "configs/config.yaml"
 
+configfile: "configs/config.yaml"
 samples = pd.read_csv(config["METAFILE"], sep = ',', header = 0)['Group']
 end = config["END"]
-trimmed=config['TRIMMED']
-index_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/trans"
-compression = config['COMPRESSION_TYPE']
-final_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/trans"
 input_path = config["INPUTPATH"]
+compression = config['COMPRESSION_TYPE']
 intermediate_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/trim"
+final_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome"
 
+def trimFiles(wildcards):
+    if (end == "pair"):
+        forward_trim = expand(intermediate_path + "/{sample}_R1.fq.dsrc", sample = samples)
+        return forward_trim
+    else:
+        read_trim = expand(intermediate_path + "/{sample}.out_trimmed.fq.dsrc", sample = samples)
+        return read_trim
 
-rule end:
+rule all:
     input:
-        report = final_path + "/report_align_count.html",
-        index = index_path + "/indexes/kallisto_index.idx"
-
-rule indexTrans:
-    input:
-        trans = config["TRANS"]
-    output:
-        index = index_path + "/indexes/kallisto_index.idx"
-    priority: 10
-    shell:
-        "kallisto index -i {output.index} {input.trans}"
+        report = final_path + "/trim/fastqc_after_trimming/report_quality_control_after_trimming.html",
+        # compressed = expand(final_path + "/trim/compressed/{sample}.fastq.dsrc",sample=samples)
 
 if end == "pair":
     if compression == "dsrc":
@@ -48,17 +44,6 @@ if end == "pair":
             run:
                 shell("gunzip -c {input.forward} > {output.uncompress1}")
                 shell("gunzip -c {input.reverse} > {output.uncompress1}")
-    elif trimmed == 'yes':
-        rule uncompress:
-            input:
-                read_trim_forward = intermediate_path + "/{sample}_R1.fq.gz",
-                read_trim_reverse = intermediate_path + "/{sample}_R2.fq.gz"
-            output:
-                uncompress1 = temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
-                uncompress1 = temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
-            run:
-                shell("gunzip -c {input.read_trim_forward} > {output.uncompress1}")
-                shell("gunzip -c {input.read_trim_reverse} > {output.uncompress1}")
     else:
         rule uncompress:
             input:
@@ -87,14 +72,6 @@ else:
                 uncompress =  temp(final_path + "/uncompressed/{sample}.out.fastq")
             shell:
                 "gunzip -c {input.read} > {output.uncompress}"
-    elif trimmed == 'yes':
-        rule uncompress:
-            input:
-                read_trim = temp(intermediate_path + "/{sample}.out_trimmed.fq")
-            output:
-                uncompress =  temp(final_path + "/uncompressed/{sample}.out.fastq")
-            shell:
-                "gunzip -c {input.read_trim} > {output.uncompress}"
     else:
         rule uncompress:
             input:
@@ -105,36 +82,35 @@ else:
                 "ln -s {input.read} {output.uncompress}"
 
 if end == "pair":
-    rule alignment:
+    rule trim:
         input:
-            index = index_path + "/indexes/kallisto_index.idx",
-            uncompress1 = temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
-            uncompress2 = temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
+            forward = temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
+            reverse = temp(final_path + "/uncompressed/{sample}_R2.out.fastq"),
         output:
-            out = directory(final_path + "/kallisto/{sample}"),
-            log = final_path + "/kallisto/{sample}_log.txt"
-        benchmark:
-            final_path + "/benchmarks/{sample}.kallisto.benchmark.txt"
+            read_trim_forward = intermediate_path + "/{sample}_R1.fq.gz",
+            read_trim_reverse = intermediate_path + "/{sample}_R2.fq.gz"
+        params:
+            outputpath = intermediate_path
         shell:
-            "kallisto quant --bias --single-overhang --fusion -i {input.index} -o {output.out}  -t 32 {input.uncompress1} {input.uncompress2} &>{output.log}"
+            "trim_galore --fastqc -j 4 --gzip --paired --basename {wildcards.sample} -o {params.outputpath} {input.forward} {input.reverse}"
 
 else:
-    rule alignment:
+    rule trim:
         input:
-            index = index_path + "/indexes/kallisto_index.idx",
             uncompress = temp(final_path + "/uncompressed/{sample}.out.fastq")
         output:
-            out = directory(final_path + "/kallisto/{sample}"),
-            log = final_path + "/kallisto/{sample}_log.txt"
-        benchmark:
-            final_path + "/benchmarks/{sample}.kallisto.benchmark.txt"
+            read_trim = temp(intermediate_path + "/{sample}.out_trimmed.fq")
+        params:
+            outputpath = intermediate_path
         shell:
-            "kallisto quant --single --bias --single-overhang --fusion -i {input.index} -o {output.out}  -t 32 -l 130 -s 30 {input.uncompress} &>{output.log}"
+            "trim_galore --fastqc -j 32 --gzip --basename {wildcards.sample} -o {params.outputpath} {input.uncompress}"
 
 rule summaryReport:
     input:
-        count_summary = expand(final_path + "/kallisto/{sample}_log.txt", sample = samples)
+        trimFiles
     output:
-        report = final_path + "/report_align_count.html"
+        report = final_path + "/trim/fastqc_after_trimming/report_quality_control_after_trimming.html"
+    params:
+        path = intermediate_path
     shell:
-        "multiqc -f {input.count_summary} --filename {output.report}"
+        "multiqc {params.path} --filename {output.report}"

@@ -5,9 +5,12 @@ samples = pd.read_csv(config["METAFILE"], sep = ',', header = 0)['Group']
 indexes = list(range(1, 9))
 end = config["END"]
 compression = config['COMPRESSION_TYPE']
+trimmed=config['TRIMMED']
 index_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome"
 final_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome"
 input_path = config["INPUTPATH"]
+intermediate_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/trim"
+
 
 
 rule end:
@@ -52,6 +55,18 @@ if end == "pair":
             run:
                 shell("gunzip -c {input.forward} > {output.uncompress1}")
                 shell("gunzip -c {input.reverse} > {output.uncompress1}")
+    elif trimmed == 'yes':
+        rule uncompress:
+            input:
+                read_trim_forward = intermediate_path + "/{sample}_R1.fq.gz",
+                read_trim_reverse = intermediate_path + "/{sample}_R2.fq.gz"
+            output:
+                uncompress1 = temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
+                uncompress1 = temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
+            run:
+                shell("gunzip -c {input.read_trim_forward} > {output.uncompress1}")
+                shell("gunzip -c {input.read_trim_reverse} > {output.uncompress1}")
+
     else:
         rule uncompress:
             input:
@@ -80,6 +95,14 @@ else:
                 uncompress =  temp(final_path + "/uncompressed/{sample}.out.fastq")
             shell:
                 "gunzip -c {input.read} > {output.uncompress}"
+    elif trimmed == 'yes':
+        rule uncompress:
+            input:
+                read_trim = temp(intermediate_path + "/{sample}.out_trimmed.fq")
+            output:
+                uncompress =  temp(final_path + "/uncompressed/{sample}.out.fastq")
+            shell:
+                "gunzip -c {input.read_trim} > {output.uncompress}"
     else:
         rule uncompress:
             input:
@@ -94,8 +117,8 @@ if end == "pair":
     rule alignment:
         input:
             index = expand(index_path + "/indexes/index.{index}.ht2", index = indexes),
-            forward = input_path + "{sample}_R1.out.fastq",
-            reverse = input_path + "{sample}_R2.out.fastq"
+            forward = temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
+            reverse = temp(final_path + "/uncompressed/{sample}_R2.out.fastq"),
         output:
             sam = temp(final_path + "/samFile/{sample}.sam"),
             bam = temp(final_path + "/bamFile/{sample}.bam"),
