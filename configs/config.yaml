@@ -5,7 +5,7 @@ PROJECT: Test
 
 ## the path to fastq files
 
-INPUTPATH: /home/agata/Documents/Work/Pipeline/Test_data
+INPUTPATH: /Users/agatamuszynska/Documents/Work/Pipeline/Test_data
 
 ## the meta file describing the experiment settings
 METAFILE: configs/Description.csv
@@ -20,18 +20,18 @@ END: "single"  # "single" or "pair"?
 COMPRESSED: "yes" # "yes" or "no"
 
 ## transcriptome file
-TRANS: /home/agata/Documents/Work/Pipeline/Test_data/Mus_musculus.GRCm38.cdna.all.fa
+TRANS: /Users/agatamuszynska/Documents/Work/Pipeline/Test_data/Mus_musculus.GRCm38.cdna.all.fa
 
 ## genome and annotation files
 GENOME:  /home/agata/Documents/Work/Pipeline/Test_data/Mus_musculus.GRCm39.dna.toplevel.fa
-ANNOTATION: /home/agata/Documents/Work/Dell_work/bisbee/Mus_musculus.GRCm39.104.gtf
+ANNOTATION: /Users/agatamuszynska/Documents/Work/Pipeline/Test_data/Mus_musculus.GRCm39.104.gtf
 ATTRIBUTE: gene_id  # the attribute used in annotation file. It's usually "gene_id", but double check that since it may also be "gene", "ID"...
 
 ## number of cores
 NCORE: 9
 
 ## Bisbbe path
-BB_PATH : /home/agata/Documents/Work/Pipeline/scripts/bisbee
+BB_PATH : /Users/agatamuszynska/Documents/Work/Pipeline/scripts/bisbee
 ## Desired release for bisbee
 RELEASE: 104
 
