@@ -17,7 +17,7 @@ FINALOUTPUT: /home/agata/Documents/Work/Pipeline/Output
 END: "single"  # "single" or "pair"?
 
 ## is input uncompressed
-COMPRESSED: "yes" # "yes" or "no"
+COMPRESSION_TYPE: "dsrc" # "none", "gz", "dsrc"
 
 ## transcriptome file
 TRANS: /home/agata/Documents/Work/Pipeline/Test_data/Mus_musculus.GRCm38.cdna.all.fa

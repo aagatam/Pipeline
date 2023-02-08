@@ -1,12 +1,10 @@
 import pandas as pd
+
 configfile: "configs/config.yaml"
-
 samples = pd.read_csv(config["METAFILE"], sep = ',', header = 0)['Group']
-
 indexes = list(range(1, 9))
 end = config["END"]
 compression = config['COMPRESSION_TYPE']
-compressed = config["COMPRESSED"]
 index_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome"
 final_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome"
 input_path = config["INPUTPATH"]
@@ -30,30 +28,74 @@ rule indexGenome:
     priority: 10
     shell:
         "hisat2-build -p {config[NCORE]} {input.genome} {params.index}"
-if compressed == "yes":
-    rule uncompress:
-        input:
-            read = input_path + "/{sample}.fastq.dsrc"
-        output:
-            uncompress = temp(final_path + "/uncompressed/{sample}.out.fastq"),
-        shell:
-            "dsrc d -t{config[NCORE]} -s {input.read} >>{output.uncompress} "
+
+if end == "pair":
+    if compression == "dsrc":
+        rule uncompress:
+            input:
+                forward = input_path + "{sample}_R1.fastq.dsrc",
+                reverse = input_path + "/{sample}_R2.fastq.dsrc"
+            output:
+                uncompress1 = temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
+                uncompress1 = temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
+            run:
+                shell("dsrc d -t{config[NCORE]} -s {input.forward} >>{output.uncompress1} ")
+                shell("dsrc d -t{config[NCORE]} -s {input.reverse} >>{output.uncompress2} ")
+    elif compression == 'gz':
+        rule uncompress:
+            input:
+                forward = input_path + "{sample}_R1.fastq.gz",
+                reverse = input_path + "/{sample}_R2.fastq.gz"
+            output:
+                uncompress1 = temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
+                uncompress1 = temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
+            run:
+                shell("gunzip -c {input.forward} > {output.uncompress1}")
+                shell("gunzip -c {input.reverse} > {output.uncompress1}")
+    else:
+        rule uncompress:
+            input:
+                forward = input_path + "/{sample}_R1.fastq",
+                reverse = input_path + "/{sample}_R2.fastq"
+            output:
+                uncompress1 =  temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
+                uncompress2 =  temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
+            run:
+                shell("ln -s {input.forward} {output.uncompress1}")
+                shell("ln -s {input.reverse} {output.uncompress2}")
 else:
-    rule uncompress:
-        input:
-            read = input_path + "/{sample}.fastq"
-        output:
-            uncompress =  temp(final_path + "/uncompressed/{sample}.out.fastq")
-        shell:
-            "ln -s {input.read} {output.uncompress}"
+    if compression == "dsrc":
+        rule uncompress:
+            input:
+                read = input_path + "/{sample}.fastq.dsrc"
+            output:
+                uncompress = temp(final_path + "/uncompressed/{sample}.out.fastq"),
+            shell:
+                "dsrc d -t{config[NCORE]} -s {input.read} >>{output.uncompress} "
+    elif compression == 'gz':
+        rule uncompress:
+            input:
+                read = input_path + "/{sample}.fastq.gz"
+            output:
+                uncompress =  temp(final_path + "/uncompressed/{sample}.out.fastq")
+            shell:
+                "gunzip -c {input.read} > {output.uncompress}"
+    else:
+        rule uncompress:
+            input:
+                read = input_path + "/{sample}.fastq"
+            output:
+                uncompress =  temp(final_path + "/uncompressed/{sample}.out.fastq")
+            shell:
+                "ln -s {input.read} {output.uncompress}"
 
 
 if end == "pair":
     rule alignment:
         input:
             index = expand(index_path + "/indexes/index.{index}.ht2", index = indexes),
-            forward = input_path + "{sample}.out.fastq",
-            reverse = input_path + "{sample}.out.fastq"
+            forward = input_path + "{sample}_R1.out.fastq",
+            reverse = input_path + "{sample}_R2.out.fastq"
         output:
             sam = temp(final_path + "/samFile/{sample}.sam"),
             bam = temp(final_path + "/bamFile/{sample}.bam"),

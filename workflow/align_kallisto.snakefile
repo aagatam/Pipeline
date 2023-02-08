@@ -4,7 +4,7 @@ configfile: "configs/config.yaml"
 samples = pd.read_csv(config["METAFILE"], sep = ',', header = 0)['Group']
 end = config["END"]
 index_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/trans"
-compressed = config["COMPRESSED"]
+compression = config['COMPRESSION_TYPE']
 final_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/trans"
 input_path = config["INPUTPATH"]
 
@@ -21,34 +21,93 @@ rule indexTrans:
     priority: 10
     shell:
         "kallisto index -i {output.index} {input.trans}"
-if compressed == "yes":
-    rule uncompress:
-        input:
-            read = input_path + "/{sample}.fastq.dsrc"
-        output:
-            uncompress = temp(final_path + "/uncompressed/{sample}.out.fastq"),
-        shell:
-            "dsrc d -t{config[NCORE]} -s {input.read} >>{output.uncompress} "
-else:
-    rule uncompress:
-        input:
-            read = input_path + "/{sample}.fastq"
-        output:
-            uncompress =  temp(final_path + "/uncompressed/{sample}.out.fastq")
-        shell:
-            "ln -s {input.read} {output.uncompress}"
 
-rule alignment:
-    input:
-        index = index_path + "/indexes/kallisto_index.idx",
-        uncompress = temp(final_path + "/uncompressed/{sample}.out.fastq")
-    output:
-        out = directory(final_path + "/kallisto/{sample}"),
-        log = final_path + "/kallisto/{sample}_log.txt"
-    benchmark:
-        final_path + "/benchmarks/{sample}.kallisto.benchmark.txt"
-    shell:
-        "kallisto quant --single --bias --single-overhang --fusion -i {input.index} -o {output.out}  -t 32 -l 130 -s 30 {input.uncompress} &>{output.log}"
+if end == "pair":
+    if compression == "dsrc":
+        rule uncompress:
+            input:
+                forward = input_path + "{sample}_R1.fastq.dsrc",
+                reverse = input_path + "/{sample}_R2.fastq.dsrc"
+            output:
+                uncompress1 = temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
+                uncompress1 = temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
+            run:
+                shell("dsrc d -t{config[NCORE]} -s {input.forward} >>{output.uncompress1} ")
+                shell("dsrc d -t{config[NCORE]} -s {input.reverse} >>{output.uncompress2} ")
+    elif compression == 'gz':
+        rule uncompress:
+            input:
+                forward = input_path + "{sample}_R1.fastq.gz",
+                reverse = input_path + "/{sample}_R2.fastq.gz"
+            output:
+                uncompress1 = temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
+                uncompress1 = temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
+            run:
+                shell("gunzip -c {input.forward} > {output.uncompress1}")
+                shell("gunzip -c {input.reverse} > {output.uncompress1}")
+    else:
+        rule uncompress:
+            input:
+                forward = input_path + "/{sample}_R1.fastq",
+                reverse = input_path + "/{sample}_R2.fastq"
+            output:
+                uncompress1 =  temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
+                uncompress2 =  temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
+            run:
+                shell("ln -s {input.forward} {output.uncompress1}")
+                shell("ln -s {input.reverse} {output.uncompress2}")
+else:
+    if compression == "dsrc":
+        rule uncompress:
+            input:
+                read = input_path + "/{sample}.fastq.dsrc"
+            output:
+                uncompress = temp(final_path + "/uncompressed/{sample}.out.fastq"),
+            shell:
+                "dsrc d -t{config[NCORE]} -s {input.read} >>{output.uncompress} "
+    elif compression == 'gz':
+        rule uncompress:
+            input:
+                read = input_path + "/{sample}.fastq.gz"
+            output:
+                uncompress =  temp(final_path + "/uncompressed/{sample}.out.fastq")
+            shell:
+                "gunzip -c {input.read} > {output.uncompress}"
+    else:
+        rule uncompress:
+            input:
+                read = input_path + "/{sample}.fastq"
+            output:
+                uncompress =  temp(final_path + "/uncompressed/{sample}.out.fastq")
+            shell:
+                "ln -s {input.read} {output.uncompress}"
+
+if end == "pair":
+    rule alignment:
+        input:
+            index = index_path + "/indexes/kallisto_index.idx",
+            uncompress1 = temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
+            uncompress2 = temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
+        output:
+            out = directory(final_path + "/kallisto/{sample}"),
+            log = final_path + "/kallisto/{sample}_log.txt"
+        benchmark:
+            final_path + "/benchmarks/{sample}.kallisto.benchmark.txt"
+        shell:
+            "kallisto quant --bias --single-overhang --fusion -i {input.index} -o {output.out}  -t 32 {input.uncompress1} {input.uncompress2} &>{output.log}"
+
+else:
+    rule alignment:
+        input:
+            index = index_path + "/indexes/kallisto_index.idx",
+            uncompress = temp(final_path + "/uncompressed/{sample}.out.fastq")
+        output:
+            out = directory(final_path + "/kallisto/{sample}"),
+            log = final_path + "/kallisto/{sample}_log.txt"
+        benchmark:
+            final_path + "/benchmarks/{sample}.kallisto.benchmark.txt"
+        shell:
+            "kallisto quant --single --bias --single-overhang --fusion -i {input.index} -o {output.out}  -t 32 -l 130 -s 30 {input.uncompress} &>{output.log}"
 
 rule summaryReport:
     input:
