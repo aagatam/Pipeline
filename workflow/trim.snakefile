@@ -10,10 +10,10 @@ final_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome"
 
 def trimFiles(wildcards):
     if (end == "pair"):
-        forward_trim = expand(intermediate_path + "/{sample}_R1.fq.dsrc", sample = samples)
+        forward_trim = expand(intermediate_path + "/{sample}_R1.fq.gz", sample = samples)
         return forward_trim
     else:
-        read_trim = expand(intermediate_path + "/{sample}.out_trimmed.fq.dsrc", sample = samples)
+        read_trim = expand(intermediate_path + "/{sample}.out_trimmed.fq.gz", sample = samples)
         return read_trim
 
 rule all:
@@ -91,6 +91,7 @@ if end == "pair":
             read_trim_reverse = intermediate_path + "/{sample}_R2.fq.gz"
         params:
             outputpath = intermediate_path
+        conda: "configs/trim_env.yaml"
         shell:
             "trim_galore --fastqc -j 4 --gzip --paired --basename {wildcards.sample} -o {params.outputpath} {input.forward} {input.reverse}"
 
@@ -113,6 +114,5 @@ rule summaryReport:
         report = final_path + "/trim/fastqc_after_trimming/report_quality_control_after_trimming.html"
     params:
         path = intermediate_path
-    conda: "configs/trim_env.yaml"
     shell:
         "multiqc {params.path} --filename {output.report}"
