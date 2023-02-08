@@ -102,6 +102,7 @@ else:
             read_trim = temp(intermediate_path + "/{sample}.out_trimmed.fq")
         params:
             outputpath = intermediate_path
+        conda: "configs/trim_env.yaml"
         shell:
             "trim_galore --fastqc -j 32 --gzip --basename {wildcards.sample} -o {params.outputpath} {input.uncompress}"
 
@@ -112,5 +113,6 @@ rule summaryReport:
         report = final_path + "/trim/fastqc_after_trimming/report_quality_control_after_trimming.html"
     params:
         path = intermediate_path
+    conda: "configs/trim_env.yaml"
     shell:
         "multiqc {params.path} --filename {output.report}"
