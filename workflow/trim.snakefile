@@ -29,7 +29,7 @@ if end == "pair":
                 reverse = input_path + "/{sample}_R2.fastq.dsrc"
             output:
                 uncompress1 = temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
-                uncompress1 = temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
+                uncompress2 = temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
             run:
                 shell("dsrc d -t{config[NCORE]} -s {input.forward} >>{output.uncompress1} ")
                 shell("dsrc d -t{config[NCORE]} -s {input.reverse} >>{output.uncompress2} ")
