@@ -4,9 +4,8 @@ configfile: "configs/config.yaml"
 samples = pd.read_csv(config["METAFILE"], sep = ',', header = 0)['Group']
 
 indexes = list(range(1, 9))
-
-counter = config["COUNTER"]
 end = config["END"]
+compression = config['COMPRESSION_TYPE']
 compressed = config["COMPRESSED"]
 index_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome"
 final_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome"
