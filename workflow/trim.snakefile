@@ -91,7 +91,7 @@ if end == "pair":
             read_trim_reverse = intermediate_path + "/{sample}_R2.fq.gz"
         params:
             outputpath = intermediate_path
-        conda: "configs/trim_env.yaml"
+        conda: "../configs/trim_env.yaml"
         shell:
             "trim_galore --fastqc -j 4 --gzip --paired --basename {wildcards.sample} -o {params.outputpath} {input.forward} {input.reverse}"
 
@@ -103,7 +103,7 @@ else:
             read_trim = temp(intermediate_path + "/{sample}.out_trimmed.fq.gz")
         params:
             outputpath = intermediate_path
-        conda: "configs/trim_env.yaml"
+        conda: "../configs/trim_env.yaml"
         shell:
             "trim_galore --fastqc -j 32 --gzip --basename {wildcards.sample} -o {params.outputpath} {input.uncompress}"
 
