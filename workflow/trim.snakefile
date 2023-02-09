@@ -31,8 +31,8 @@ if end == "pair":
                 uncompress1 = temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
                 uncompress2 = temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
             run:
-                shell("dsrc d -t{config[NCORE]} -s {input.forward} >>{output.uncompress1} ")
-                shell("dsrc d -t{config[NCORE]} -s {input.reverse} >>{output.uncompress2} ")
+                shell("dsrc d -s {input.forward} > {output.uncompress1} ")
+                shell("dsrc d -s {input.reverse} > {output.uncompress2} ")
     elif compression == 'gz':
         rule uncompress:
             input:
@@ -63,7 +63,7 @@ else:
             output:
                 uncompress = temp(final_path + "/uncompressed/{sample}.out.fastq"),
             shell:
-                "dsrc d -t{config[NCORE]} -s {input.read} >>{output.uncompress} "
+                "dsrc d -s {input.read} > {output.uncompress} "
     elif compression == 'gz':
         rule uncompress:
             input:
