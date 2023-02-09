@@ -98,7 +98,7 @@ else:
     elif trimmed == 'yes':
         rule uncompress:
             input:
-                read_trim = temp(intermediate_path + "/{sample}.out_trimmed.fq")
+                read_trim = temp(intermediate_path + "/{sample}_trimmed.fq")
             output:
                 uncompress =  temp(final_path + "/uncompressed/{sample}.out.fastq")
             shell:

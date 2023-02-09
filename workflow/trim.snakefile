@@ -13,7 +13,7 @@ def trimFiles(wildcards):
         forward_trim = expand(intermediate_path + "/{sample}_R1.fq.gz", sample = samples)
         return forward_trim
     else:
-        read_trim = expand(intermediate_path + "/{sample}.out_trimmed.fq.gz", sample = samples)
+        read_trim = expand(intermediate_path + "/{sample}_trimmed.fq.gz", sample = samples)
         return read_trim
 
 rule all:
@@ -100,7 +100,7 @@ else:
         input:
             uncompress = temp(final_path + "/uncompressed/{sample}.out.fastq")
         output:
-            read_trim = temp(intermediate_path + "/{sample}.out_trimmed.fq.gz")
+            read_trim = temp(intermediate_path + "/{sample}_trimmed.fq.gz")
         params:
             outputpath = intermediate_path
         conda: "../configs/trim_env.yaml"

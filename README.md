@@ -36,6 +36,7 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
 ## 4. Running the pipeline. <a name="run"></a>
 ## Quality control, assebmle and quantification.
 ### 1. Trimming
+ nohup nice snakemake --use-conda --conda-frontend conda -p -j 1 -s workflow/trim.snakefile &
 --use-conda
 ### 1. Quality contol on raw reads. <a name="qc"></a>
  - `snakemake --cores all -p -s workflow/quality_control.snakefile`
