@@ -116,7 +116,7 @@ if end == "pair":
         benchmark:
             final_path + "/benchmarks/{sample}.kallisto.benchmark.txt"
         shell:
-            "kallisto quant --bias --single-overhang --fusion -i {input.index} -o {output.out}  -t 32 {input.uncompress1} {input.uncompress2} &>{output.log}"
+            "kallisto quant --bias --single-overhang --fusion -i {input.index} -o {output.out}  -t {config[NCORE]} {input.uncompress1} {input.uncompress2} &>{output.log}"
 
 else:
     rule alignment:
@@ -129,7 +129,7 @@ else:
         benchmark:
             final_path + "/benchmarks/{sample}.kallisto.benchmark.txt"
         shell:
-            "kallisto quant --single --bias --single-overhang --fusion -i {input.index} -o {output.out}  -t 32 -l 130 -s 30 {input.uncompress} &>{output.log}"
+            "kallisto quant --single --bias --single-overhang --fusion -i {input.index} -o {output.out}  -t {config[NCORE]} -l 130 -s 30 {input.uncompress} &>{output.log}"
 
 rule summaryReport:
     input:

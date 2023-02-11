@@ -32,5 +32,5 @@ rule spladderBuild:
         BAI = expand(final_path + "/bamFileSort/{sample}.sort.bam.bai", sample=samples),
         out = splad_out
     shell:
-        "spladder build --bams {params.files} --annotation {params.GTF} --outdir {params.out}" # no paralel for dumb mac
+        "spladder build --bams {params.files} --event-types exon_skip,mutex_exons,alt_3prime,alt_5prime,mult_exon_skip --annotation {params.GTF} --outdir {params.out}" # for mac ->
         #"spladder build --parallel {config[NCORE]} --bams {params.files} --annotation {params.GTF} --outdir {params.out}"

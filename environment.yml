@@ -8,7 +8,6 @@ dependencies:
   - r-tinytex=0.43
   - r-base=4.2.1
   - python=3.11.0
-  - dsrc=2015.06.04
   - r-rmarkdown=2.19
   - r-curl=4.3.3
   - fastqc=0.11.9

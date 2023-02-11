@@ -12,7 +12,6 @@ input_path = config["INPUTPATH"]
 intermediate_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/trim"
 
 
-
 rule end:
     input:
         GTF = expand(final_path + "/countFile/{sample}/{sample}.gtf",sample=samples),

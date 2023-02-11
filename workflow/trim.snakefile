@@ -93,7 +93,7 @@ if end == "pair":
             outputpath = intermediate_path
         conda: "../configs/trim_env.yaml"
         shell:
-            "trim_galore --fastqc -j 4 --gzip --paired --basename {wildcards.sample} -o {params.outputpath} {input.forward} {input.reverse}"
+            "trim_galore --fastqc -j {config[NCORE]} --gzip --paired --basename {wildcards.sample} -o {params.outputpath} {input.forward} {input.reverse}"
 
 else:
     rule trim:
@@ -105,7 +105,7 @@ else:
             outputpath = intermediate_path
         conda: "../configs/trim_env.yaml"
         shell:
-            "trim_galore --fastqc -j 32 --gzip --basename {wildcards.sample} -o {params.outputpath} {input.uncompress}"
+            "trim_galore --fastqc -j {config[NCORE]} --gzip --basename {wildcards.sample} -o {params.outputpath} {input.uncompress}"
 
 rule summaryReport:
     input:
