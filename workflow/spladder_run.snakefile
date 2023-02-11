@@ -11,7 +11,8 @@ splad_out = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome/spladder"
 rule end:
     input:
         expand(splad_out+"/merge_graphs_{event}_C3.confirmed.txt.gz", event=events),
-        expand(final_path + "/bamFileSort/{sample}.sort.bam.bai", sample=samples)
+        expand(final_path + "/bamFileSort/{sample}.sort.bam.bai", sample=samples),
+        expand(splad_out+"/merge_graphs_{event}_C3.confirmed.txt", event=events)
 
 rule indexBams:
     input:
@@ -34,3 +35,10 @@ rule spladderBuild:
     shell:
         "spladder build --bams {params.files} --event-types exon_skip,mutex_exons,alt_3prime,alt_5prime,mult_exon_skip --annotation {params.GTF} --outdir {params.out}" # for mac ->
         #"spladder build --parallel {config[NCORE]} --bams {params.files} --annotation {params.GTF} --outdir {params.out}"
+rule unzip_txt:
+    input:
+        txt_gz = expand(splad_out+"/merge_graphs_{event}_C3.confirmed.txt.gz", event=events)
+    output:
+        txt = expand(splad_out+"/merge_graphs_{event}_C3.confirmed.txt", event=events)
+    shell:
+        "pigz -d -k -c -p{config[NCORE]} {input.txt_gz} > {output.txt}"

@@ -42,8 +42,10 @@ rule bisbeeProt:
 
 rule markdown:
     input:
+        CSV_PROT = bisbee_out + "/{event}.peptides.csv",
         "scripts/Spladder.Rmd"
     output:
         'scripts/Spladder.pdf'
-    shell:
-        "Rscript -e \"rmarkdown::render('scripts/Spladder.Rmd')\""
+    run:
+        shell("touch {input.CSV_PROT}")
+        shell("Rscript -e \"rmarkdown::render('scripts/Spladder.Rmd')\"")

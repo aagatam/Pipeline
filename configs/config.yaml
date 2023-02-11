@@ -34,7 +34,7 @@ ATTRIBUTE: gene_id  # the attribute used in annotation file. It's usually "gene_
 NCORE: 9
 
 ## Bisbbe path
-BB_PATH : scripts/bisbee
+BB_PATH : ./scripts/bisbee
 ## Desired release for bisbee
 RELEASE: 104
 
