@@ -10,7 +10,7 @@ final_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome"
 
 def trimFiles(wildcards):
     if (end == "pair"):
-        forward_trim = expand(intermediate_path + "/{sample}_R1.fq.gz", sample = samples)
+        forward_trim = expand(intermediate_path + "/{sample}_val_1.fq.gz", sample = samples)
         return forward_trim
     else:
         read_trim = expand(intermediate_path + "/{sample}_trimmed.fq.gz", sample = samples)
@@ -19,7 +19,7 @@ def trimFiles(wildcards):
 rule all:
     input:
         report = final_path + "/trim/fastqc_after_trimming/report_quality_control_after_trimming.html",
-        # compressed = expand(final_path + "/trim/compressed/{sample}.fastq.dsrc",sample=samples)
+        compressed = expand(final_path + "/trim/compressed/{sample}_trimmed.fastq.gz",sample=samples)
 
 if end == "pair":
     if compression == "dsrc":
@@ -87,8 +87,8 @@ if end == "pair":
             forward = temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
             reverse = temp(final_path + "/uncompressed/{sample}_R2.out.fastq"),
         output:
-            read_trim_forward = intermediate_path + "/{sample}_R1.fq.gz",
-            read_trim_reverse = intermediate_path + "/{sample}_R2.fq.gz"
+            read_trim_forward = intermediate_path + "/{sample}_val_1.fq.gz",
+            read_trim_reverse = intermediate_path + "/{sample}_val_2.fq.gz"
         params:
             outputpath = intermediate_path
         conda: "../configs/trim_env.yaml"

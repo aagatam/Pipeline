@@ -36,8 +36,8 @@ if end == "pair":
     elif trimmed == 'yes':
         rule uncompress:
             input:
-                read_trim_forward = intermediate_path + "/{sample}_R1.fq.gz",
-                read_trim_reverse = intermediate_path + "/{sample}_R2.fq.gz"
+                read_trim_forward = intermediate_path + "/{sample}_val_1.fq.gz",
+                read_trim_reverse = intermediate_path + "/{sample}_val_2.fq.gz"
             output:
                 uncompress1 = temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
                 uncompress1 = temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
@@ -76,7 +76,7 @@ else:
     elif trimmed == 'yes':
         rule uncompress:
             input:
-                read_trim = temp(intermediate_path + "/{sample}_trimmed.fq")
+                read_trim = intermediate_path + "/{sample}_trimmed.fq.gz"
             output:
                 uncompress =  temp(final_path + "/uncompressed/{sample}.out.fastq")
             shell:
