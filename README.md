@@ -4,6 +4,7 @@
 - [Installation](#installation)
 - [Configuration](#config)
 - [Running the pipeline](#run)
+  - [Trimming] (#trim)
   - [QC raw reads](#qc)
   - [Alignment to genome](#genome)
   - [Alignment to transcriptome](#trans)
@@ -21,6 +22,7 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
 ## 1. Requirements <a name="requirements"></a>
  - `conda` for building the environment
  - [`interproscan`](https://interproscan-docs.readthedocs.io/en/latest/UserDocs.html) for finding protein domains
+ - [`dsrc`] (https://github.com/refresh-bio/DSRC) if your files are dsrc compressed  
 
 ## 2. Installation <a name="installation"></a>
 ### 1. Clone the repository
@@ -35,16 +37,19 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
 
 ## 4. Running the pipeline. <a name="run"></a>
 ## Quality control, assebmle and quantification.
-### 1. Trimming
- nohup nice snakemake --use-conda --conda-frontend conda -p -j 1 -s workflow/trim.snakefile &
---use-conda
-### 1. Quality contol on raw reads. <a name="qc"></a>
+
+### 1. Trimming  <a name="trim"></a>
+  - `nohup nice snakemake --use-conda --conda-frontend conda -p -j 1 -s workflow/trim.snakefile &
+--use-conda`
+#### **Outputs**
+
+### 2. Quality contol on raw reads. <a name="qc"></a>
  - `snakemake --cores all -p -s workflow/quality_control.snakefile`
 #### **Outputs**
   - In `FINALOUTPUT`/`PROJECT`/fastqc:
     - summary report_quality_control.html,
     - report for each sample
-### 2. Alignment to genome  <a name="genome"></a>
+### 3. Alignment to genome  <a name="genome"></a>
  - `snakemake --cores all -p -s workflow/align_HiSat2.snakefile`
 #### **Outputs**
   - In `FINALOUTPUT`/`PROJECT`/genome:
@@ -55,7 +60,7 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
     - sorted BAM files in `bamFIleSort`,
     - qualimap alignment QC in `alignmentQC` folder
 
-### 3. Alignment to transcriptome <a name="trans"></a>
+### 4. Alignment to transcriptome <a name="trans"></a>
  - `snakemake --cores all -p -s workflow/align_kallisto.snakefile`
 #### **Outputs**
   - In `FINALOUTPUT`/`PROJECT`/trans:
@@ -68,12 +73,12 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
 #### Alternative splicing and effects analysis
 #### To perform ASEs analysis alignment to genome must be done!
 
-### 4. Alternative splicing discovery with Spladder  <a name="asdis"></a>
+### 5. Alternative splicing discovery with Spladder  <a name="asdis"></a>
 This part will index all BAM files and run Spladder.
  - `snakemake --cores all -p -s workflow/spladder_run.snakefile`
 #### **Outputs**
 
-### 5. Alternative events analysis with Bisbee and analysis with R <a name="asan"></a>
+### 6. Alternative events analysis with Bisbee and analysis with R <a name="asan"></a>
 This part will run Bisbbe and analyse its output files with Rmarkdown script producing report and also bunch of csv files with results and files needed for further analysis with InterProscan and visualization. Depending on dataset size, this step might take a few hours, especially during first run when necessary libraries are downloaded. \
 Install desired species release, for example:
  - `pyensembl install --release 104 --species mouse`\
@@ -97,7 +102,7 @@ Install desired species release, for example:
     - files  _to_grep.txt used for filtering fasta files for further InterProScan analysis.
   - Spladder.pdf - report in `scripts` folder
 
-### 6. Protein domains affected by ASEs analysis with InterProScan <a name="prot"></a>
+### 7. Protein domains affected by ASEs analysis with InterProScan <a name="prot"></a>
  - `snakemake --cores all -p -s workflow/interproscan_run.snakefile`
 #### **Outputs**
    - In `FINALOUTPUT`/`PROJECT`/genome/bisbee:
@@ -105,13 +110,13 @@ Install desired species release, for example:
   - In `FINALOUTPUT`/`PROJECT`/genome/InterProScan:
    - .tsv files with InterProScan results
 
-### 7. Final visualization with RMarkdown: <a name="plots"></a>
+### 8. Final visualization with RMarkdown: <a name="plots"></a>
  - `R -e "rmarkdown::render('scripts/Plots.Rmd',params=list(event_type='event_type', event='event_no'),output_file='Out_name.pdf')"` \
  Here `event_no` is the event you want to visualize (for example mutex_exons_168) and `event_type` is one of: alt_3_prime, alt_5_prime, exon_skip, mult_exon_skip, mutex_exons (in this case mutex_exons).
 #### **Outputs**
    - Plots.pdf file with two plots for a given event. One for the whole transcript, and a close-up on the second one.
 
-### 8. Differential gene expression and Gene Ontology analysis for RNA-seq <a name="dif"></a>
+### 9. Differential gene expression and Gene Ontology analysis for RNA-seq <a name="dif"></a>
  - `R -e "rmarkdown::render('scripts/Expression_HiSat.Rmd')"`
 
  OR
@@ -122,7 +127,7 @@ Install desired species release, for example:
    - results for limma, edgeR and DeSeq2 DEG (all and below given p-value) in `FINALOUTPUT`/`PROJECT`/genome/Hisat_results or `FINALOUTPUT`/`PROJECT`/trans/kallisto,
    - results for GO terms analysis in folders like above.
 
-### 9. Differential gene expression and Gene Ontology for Illumina microarrays <a name="micro"></a>
+### 10. Differential gene expression and Gene Ontology for Illumina microarrays <a name="micro"></a>
  - `R -e "rmarkdown::render('scripts/Expression_Illumina_ microarrays.Rmd')"`
 #### **Outputs**
    - Expression_Illumina_ microarrays.pdf report in `scripts` folder
