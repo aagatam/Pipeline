@@ -33,7 +33,7 @@ path_configs<-params$inpath
 #opts_knit$set(root.dir = path)
 knitr::opts_chunk$set(echo=FALSE)
 config<-read_yaml(paste(path_configs,'/config.yaml',sep=''),fileEncoding = "UTF-8")
-hisat_path<-spl_path<-paste(config$FINALOUTPUT,config$PROJECT,'genome/Hisat_results',sep='/')
+hisat_path<-spl_path<-paste(config$FINALOUTPUT,config$PROJECT,'genome/',sep='/')
 
 ```
 
