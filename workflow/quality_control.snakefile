@@ -31,8 +31,8 @@ if end == "pair":
                 uncompress1 = temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
                 uncompress1 = temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
             run:
-                shell("gunzip -c {input.forward} > {output.uncompress1}")
-                shell("gunzip -c {input.reverse} > {output.uncompress1}")
+                shell("pigz -d -k -c -p{config[NCORE]} {input.forward} > {output.uncompress1}")
+                shell("pigz -d -k -c -p{config[NCORE]} {input.reverse} > {output.uncompress1}")
     elif trimmed == 'yes':
         rule uncompress:
             input:
@@ -42,8 +42,8 @@ if end == "pair":
                 uncompress1 = temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
                 uncompress1 = temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
             run:
-                shell("gunzip -c {input.read_trim_forward} > {output.uncompress1}")
-                shell("gunzip -c {input.read_trim_reverse} > {output.uncompress1}")
+                shell("pigz -d -k -c -p{config[NCORE]} {input.read_trim_forward} > {output.uncompress1}")
+                shell("pigz -d -k -c -p{config[NCORE]} {input.read_trim_reverse} > {output.uncompress1}")
 
     else:
         rule uncompress:
@@ -72,7 +72,7 @@ else:
             output:
                 uncompress =  temp(final_path + "/uncompressed/{sample}.out.fastq")
             shell:
-                "gunzip -c {input.read} > {output.uncompress}"
+                "pigz -d -k -c -p{config[NCORE]} {input.read} > {output.uncompress}"
     elif trimmed == 'yes':
         rule uncompress:
             input:
@@ -80,7 +80,7 @@ else:
             output:
                 uncompress =  temp(final_path + "/uncompressed/{sample}.out.fastq")
             shell:
-                "gunzip -c {input.read_trim} > {output.uncompress}"
+                "pigz -d -k -c -p{config[NCORE]} {input.read_trim} > {output.uncompress}"
     else:
         rule uncompress:
             input:

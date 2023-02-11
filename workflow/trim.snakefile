@@ -53,8 +53,9 @@ if end == "pair":
                 uncompress1 =  temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
                 uncompress2 =  temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
             run:
-                shell("ln -s {input.forward} {output.uncompress1}")
-                shell("ln -s {input.reverse} {output.uncompress2}")
+                shell("pigz -d -k -c -p{config[NCORE]} {input.forward} > {output.uncompress1}")
+                shell("pigz -d -k -c -p{config[NCORE]} {input.reverse} > {output.uncompress1}")
+
 else:
     if compression == "dsrc":
         rule uncompress:
@@ -71,7 +72,8 @@ else:
             output:
                 uncompress =  temp(final_path + "/uncompressed/{sample}.out.fastq")
             shell:
-                "gunzip -c {input.read} > {output.uncompress}"
+                "pigz -d -c -k -p{config[NCORE]} {input.read} > {output.uncompress}"
+
     else:
         rule uncompress:
             input:
