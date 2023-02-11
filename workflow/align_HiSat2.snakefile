@@ -16,8 +16,8 @@ rule end:
     input:
         GTF = expand(final_path + "/countFile/{sample}/{sample}.gtf",sample=samples),
         report = final_path + "/report_align_count.html",
-        gene_mat = final_path + "/Hisat_results/gene_count_matrix.csv",
-        trans_mat = final_path + "/Hisat_results/transcript_count_matrix.csv"
+        gene_mat = final_path + "/gene_count_matrix.csv",
+        trans_mat = final_path + "/transcript_count_matrix.csv"
 
 rule indexGenome:
     input:
@@ -182,10 +182,10 @@ rule prepDE:
     params:
         GTF = final_path + "/countFile"
     output:
-        gene_mat = final_path + "/Hisat_results/gene_count_matrix.csv",
-        trans_mat = final_path + "/Hisat_results/transcript_count_matrix.csv"
+        gene_mat = final_path + "/gene_count_matrix.csv",
+        trans_mat = final_path + "/transcript_count_matrix.csv"
     shell:
-        "python ../scripts/prepDE.pr -i {params.GTF} -g {output.gene_mat} -t {output.trans_mat} "
+        "python ./scripts/prepDE.py -i {params.GTF} -g {output.gene_mat} -t {output.trans_mat} "
 
 rule summaryReport:
     input:
