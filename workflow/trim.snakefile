@@ -18,8 +18,8 @@ def trimFiles(wildcards):
 
 rule all:
     input:
-        report = final_path + "/trim/fastqc_after_trimming/report_quality_control_after_trimming.html",
-        compressed = expand(final_path + "/trim/compressed/{sample}_trimmed.fastq.gz",sample=samples)
+        report = intermediate_path + "/fastqc_after_trimming/report_quality_control_after_trimming.html",
+        compressed = expand(intermediate_path + "/{sample}_trimmed.fq.gz",sample=samples)
 
 if end == "pair":
     if compression == "dsrc":
@@ -100,7 +100,7 @@ else:
         input:
             uncompress = temp(final_path + "/uncompressed/{sample}.out.fastq")
         output:
-            read_trim = temp(intermediate_path + "/{sample}_trimmed.fq.gz")
+            read_trim = intermediate_path + "/{sample}_trimmed.fq.gz"
         params:
             outputpath = intermediate_path
         conda: "../configs/trim_env.yaml"
@@ -111,7 +111,7 @@ rule summaryReport:
     input:
         trimFiles
     output:
-        report = final_path + "/trim/fastqc_after_trimming/report_quality_control_after_trimming.html"
+        report = intermediate_path + "/fastqc_after_trimming/report_quality_control_after_trimming.html"
     params:
         path = intermediate_path
     shell:
