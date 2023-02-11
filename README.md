@@ -42,6 +42,9 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
   - `nohup nice snakemake --use-conda --conda-frontend conda -p -j 1 -s workflow/trim.snakefile &
 --use-conda`
 #### **Outputs**
+  - In `FINALOUTPUT`/`PROJECT`/trim:
+    - trimmed fq.gz files,
+    - quality report in `fastqc_after_trimming` folder 
 
 ### 2. Quality contol on raw reads. <a name="qc"></a>
  - `snakemake --cores all -p -s workflow/quality_control.snakefile`
