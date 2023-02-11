@@ -39,12 +39,11 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
 ## Quality control, assebmle and quantification.
 
 ### 1. Trimming  <a name="trim"></a>
-  - `nohup nice snakemake --use-conda --conda-frontend conda -p -j 1 -s workflow/trim.snakefile &
---use-conda`
+  - `nohup nice snakemake --cores all --use-conda --conda-frontend conda -p -j 1 -s workflow/trim.snakefile &`
 #### **Outputs**
   - In `FINALOUTPUT`/`PROJECT`/trim:
     - trimmed fq.gz files,
-    - quality report in `fastqc_after_trimming` folder 
+    - quality report in `fastqc_after_trimming` folder
 
 ### 2. Quality contol on raw reads. <a name="qc"></a>
  - `snakemake --cores all -p -s workflow/quality_control.snakefile`
@@ -131,6 +130,7 @@ Install desired species release, for example:
    - results for GO terms analysis in folders like above.
 
 ### 10. Differential gene expression and Gene Ontology for Illumina microarrays <a name="micro"></a>
+ - Change `config_Illumina.yaml` and `Description_Illumina.csv`,
  - `R -e "rmarkdown::render('scripts/Expression_Illumina_ microarrays.Rmd')"`
 #### **Outputs**
    - Expression_Illumina_ microarrays.pdf report in `scripts` folder
