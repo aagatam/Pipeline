@@ -21,6 +21,7 @@ COMPRESSION_TYPE: "dsrc" # "none", "gz", "dsrc"
 
 #switch to no if trimming was not performed
 TRIMMED: "yes"
+
 ## transcriptome file
 TRANS: /home/agata/Documents/Work/Pipeline/Test_data/Mus_musculus.GRCm38.cdna.all.fa
 

@@ -34,8 +34,8 @@ lapply(packages,require, character.only=TRUE)
 path_configs<-params$inpath
 #opts_knit$set(root.dir = path)
 knitr::opts_chunk$set(echo=FALSE)
-config<-read_yaml(paste(path_configs,'/config.yaml',sep=''),fileEncoding = "UTF-8")
-Description<-read.table(config$METAFILE_Illumina,header=TRUE,sep=';', stringsAsFactors=FALSE)
+config<-read_yaml(paste(path_configs,'/config_Illumina.yaml',sep=''),fileEncoding = "UTF-8")
+Description<-read.table(config$METAFILE,header=TRUE,sep=',', stringsAsFactors=FALSE)
 output_path<-paste(config$FINALOUTPUT,config$PROJECT,'Microarray_results',sep='/')
 dir.create(file.path(output_path), showWarnings = FALSE)
 

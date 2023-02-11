@@ -1,0 +1,18 @@
+# Please check the parameters, and adjust them according to your circumstance
+
+# project name
+PROJECT: Test
+
+## the path to fastq files
+
+INPUTPATH: /home/agata/Documents/Work/Pipeline/Test_data
+
+## the meta file describing the experiment settings
+METAFILE: /home/agata/Documents/Work/Pipeline/configs/Description_Illumina.csv
+
+## paths for intermediate and final outputs
+FINALOUTPUT: /home/agata/Documents/Work/Pipeline/Output
+BGX_FILE: /home/agata/Documents/Work/Parkinson-microarrays/200793810038/HumanHT-12_V4_0_R2_15002873_B2
+CONTRAST: HealthyvsPatient=Healthy-Patient
+P_VAL_micro: 0.05
+TH_GO_micro: 0.01
