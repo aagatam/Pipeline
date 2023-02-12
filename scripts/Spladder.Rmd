@@ -21,10 +21,11 @@ package.check <- lapply(
     }
   }
 )
+config<-read_yaml(paste(path_configs,'/config.yaml',sep=''),fileEncoding = "UTF-8")
 if (!require("BiocManager", quietly = TRUE))
    { install.packages("BiocManager",repos = "http://cran.us.r-project.org")
 BiocManager::install()}
-listOfBiocPackages<-c("topGO","GOfuncR","annotate","biomaRt","GOfuncR","org.Mm.eg.db","Mus.musculus")
+listOfBiocPackages<-c("topGO","GOfuncR","annotate","biomaRt","GOfuncR",config$GO_MAPPING)
 notInstalled <- which( !listOfBiocPackages %in% rownames(installed.packages()) )
 ## check there's still something left to install
 if( length(notInstalled) ) {
@@ -34,7 +35,6 @@ path_configs<-params$inpath
 lapply(listOfBiocPackages,library, character.only=TRUE)
 lapply(packages,require, character.only=TRUE)
 
-#opts_knit$set(root.dir = path)
 knitr::opts_chunk$set(echo=FALSE)
 #reshape2 ComplexHeatmap tidyverse tmod rcartocolor gridExtra metR
 ```
@@ -42,7 +42,6 @@ knitr::opts_chunk$set(echo=FALSE)
 ```{r,warning=FALSE,message=FALSE,include=FALSE}
 
 Description<-read.table(paste(path_configs,'/Description.csv',sep=''),header=TRUE,sep=',')
-config<-read_yaml(paste(path_configs,'/config.yaml',sep=''),fileEncoding = "UTF-8")
 spl_path<-paste(config$FINALOUTPUT,config$PROJECT,'genome/spladder',sep='/')
 bb_path<-paste(config$FINALOUTPUT,config$PROJECT,'genome/bisbee',sep='/')
 dir.create(file.path(spl_path, 'Script_output'), showWarnings = FALSE)
@@ -455,7 +454,7 @@ for (gene in gene_names)
 
 
 mart<-useMart(biomart="ENSEMBL_MART_ENSEMBL",
-              dataset='mmusculus_gene_ensembl',
+              dataset=config$DATSET_MART,
               host='useast.ensembl.org')
 
 ensemble2gene <- getBM(attributes=c("ensembl_gene_id","external_gene_name"),
@@ -513,7 +512,7 @@ for (event in c('alt_3_prime','alt_5_prime','exon_skip','mult_exon_skip','mutex_
     for (method in c('CC','MF','BP'))
     {
       GOdata <- new("topGOdata", ontology = method, allGenes = geneList2,
-                annot = annFUN.org,mapping='org.Mm.eg.db',
+                annot = annFUN.org,mapping=config$GO_MAPPING,
                 ID='ensembl')
       test.stat <- new("parentChild", testStatistic = GOFisherTest, name = "Fisher test")
       resultFisher <- getSigGroups(GOdata, test.stat)
@@ -524,12 +523,12 @@ for (event in c('alt_3_prime','alt_5_prime','exon_skip','mult_exon_skip','mutex_
       p.val.FP <- score(resultFisher)
       p_val_adj<-p.adjust(p.val.FP,method="BY")
       lnames <- names(p.val.FP)[p.val.FP < 0.01]
-      lgenes <- get_anno_genes(lnames, database = 'org.Mm.eg.db',genes=SYM_MM)
+      lgenes <- get_anno_genes(lnames, database = config$GO_MAPPING,genes=SYM_MM)
 
       allRes<-allRes[which(as.numeric(allRes$parentchildFisher)<th_GO),]
       p.val.FP <- score(resultFisher)
       lnames <- names(p.val.FP)[p.val.FP < 0.01]
-      lgenes <- get_anno_genes(lnames, database = 'Mus.musculus',genes=data$gene_name_proper)
+      lgenes <- get_anno_genes(lnames, database =config$GO_MAPPING,genes=data$gene_name_proper)
       
       if (dim(allRes)[1]<10){b=dim(allRes)[1]}
       else {b=10}
@@ -726,7 +725,7 @@ for (event in c('alt_3_prime','alt_5_prime','exon_skip','mult_exon_skip','mutex_
     for (method in c('CC','MF','BP'))
     {
       GOdata <- new("topGOdata", ontology = method, allGenes = geneList2,
-                annot = annFUN.org,mapping='org.Mm.eg.db',
+                annot = annFUN.org,mapping=config$GO_MAPPING,
                 ID='ensembl')
       test.stat <- new("parentChild", testStatistic = GOFisherTest, name = "Fisher test")
       resultFisher <- getSigGroups(GOdata, test.stat)
@@ -735,14 +734,14 @@ for (event in c('alt_3_prime','alt_5_prime','exon_skip','mult_exon_skip','mutex_
 
       p.val.FP <- score(resultFisher)
       lnames <- names(p.val.FP)[p.val.FP < 0.01]
-      lgenes <- get_anno_genes(lnames, database = 'org.Mm.eg.db',genes=SYM_MM)
+      lgenes <- get_anno_genes(lnames, database = config$GO_MAPPING,genes=SYM_MM)
 
       #print(length(which(allRes_pVal$parentchildFisher<0.01)))
       #assign(name.main,allRes_pVal)
       allRes_pVal<-allRes[which(as.numeric(allRes$parentchildFisher)<th_GO),]
       p.val.FP <- score(resultFisher)
       lnames <- names(p.val.FP)[p.val.FP < 0.01]
-      lgenes <- get_anno_genes(lnames, database = 'Mus.musculus',genes=data$gene_name_proper)
+      lgenes <- get_anno_genes(lnames, database = config$GO_MAPPING,genes=data$gene_name_proper)
       if (dim(allRes_pVal)[1]<10){b=dim(allRes_pVal)[1]}
       else {b=10}
       if (b!=0)

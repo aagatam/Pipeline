@@ -2,6 +2,14 @@ import pandas as pd
 import sys, os, re
 import h5py
 import numpy as np
+import warnings
+
+def fxn():
+    warnings.warn("deprecated", DeprecationWarning)
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    fxn()
 
 events_file=sys.argv[1]
 event_type=sys.argv[2]

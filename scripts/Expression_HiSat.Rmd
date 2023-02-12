@@ -17,10 +17,12 @@ package.check <- lapply(
     }
   }
 )
+config<-read_yaml(paste(path_configs,'/config.yaml',sep=''),fileEncoding = "UTF-8")
+
 if (!require("BiocManager", quietly = TRUE))
    { install.packages("BiocManager",repos = "http://cran.us.r-project.org")
 BiocManager::install()}
-listOfBiocPackages<-c("topGO","org.Mm.eg.db","biomaRt","limma","DESeq2","edgeR","sva")
+listOfBiocPackages<-c("topGO",config$GO_MAPPING,"biomaRt","limma","DESeq2","edgeR","sva")
 notInstalled <- which( !listOfBiocPackages %in% rownames(installed.packages()) )
 ## check there's still something left to install
 if( length(notInstalled) ) {
@@ -32,8 +34,7 @@ lapply(packages,require, character.only=TRUE)
 path_configs<-params$inpath
 #opts_knit$set(root.dir = path)
 knitr::opts_chunk$set(echo=FALSE)
-config<-read_yaml(paste(path_configs,'/config.yaml',sep=''),fileEncoding = "UTF-8")
-hisat_path<-spl_path<-paste(config$FINALOUTPUT,config$PROJECT,'genome/',sep='/')
+hisat_path<-paste(config$FINALOUTPUT,config$PROJECT,'genome/',sep='/')
 
 ```
 
@@ -111,6 +112,15 @@ hisat.t <- read.table(file=paste(hisat_path,"transcript_count_matrix.csv",sep='/
 hisat.g <- read.table(file=paste(hisat_path,"gene_count_matrix.csv",sep='/'), header=TRUE, row.names=1, sep=",")
 Description<-read.table(paste(path_configs,'/Description.csv',sep=''),header=TRUE,sep=',', stringsAsFactors=FALSE)
 
+repetitions<-max(Description$Repetition)
+if (repetitions <2)
+{
+  print('Too litlle repetitions, specify at least 2!')
+  knitr::knit_exit()
+}
+
+```
+```{r,warning=FALSE,message=FALSE,include=FALSE}
 
 dataset_size<-dim(Description)[1]
 for (i in (1:dataset_size))
@@ -289,7 +299,7 @@ adj.method='BH'
 
 
 mart<-useMart(biomart="ENSEMBL_MART_ENSEMBL",
-              dataset='mmusculus_gene_ensembl')
+              dataset=config$DATSET_MART)
 
 geneinfo<-getBM(c("external_gene_name","ensembl_gene_id"),"ensembl_gene_id",rownames(hisat.g.filtered),mart)
 not_found<-hisat.g.filtered[-which(rownames(hisat.g.filtered)%in%geneinfo[,'ensembl_gene_id']),]
@@ -403,9 +413,9 @@ for (method in c('limma','edgeR','DeSeq'))
     res_GO <- new("topGOdata", ontology = ont,
                   allGenes =geneList, geneSel = topDiffGenes,
                   nodeSize = 10,
-                  annot = annFUN.org, mapping="org.Mm.eg.db",ID="ensembl")
+                  annot = annFUN.org, mapping=config$GO_MAPPING,ID="ensembl")
     WTP.resultFisher.pc <- runTest(res_GO, algorithm = "parentchild", statistic = "fisher")
-
+      
     used<-usedGO(res_GO)
     GO.allRes <- GenTable(res_GO, #classicFisher = WTP.resultFisher,
                            parentchildFisher=WTP.resultFisher.pc,orderBy = "parentchildFisher",

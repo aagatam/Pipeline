@@ -17,10 +17,11 @@ package.check <- lapply(
     }
   }
 )
+config<-read_yaml(paste(path_configs,'/config.yaml',sep=''),fileEncoding = "UTF-8")
 if (!require("BiocManager", quietly = TRUE))
    { install.packages("BiocManager",repos = "http://cran.us.r-project.org")
 BiocManager::install()}
-listOfBiocPackages<-c("topGO","org.Mm.eg.db","biomaRt","limma","DESeq2","edgeR","sva")
+listOfBiocPackages<-c("topGO",config$GO_MAPPING,"biomaRt","limma","DESeq2","edgeR","sva")
 notInstalled <- which( !listOfBiocPackages %in% rownames(installed.packages()) )
 ## check there's still something left to install
 if( length(notInstalled) ) {
@@ -32,7 +33,6 @@ lapply(packages,require, character.only=TRUE)
 path_configs<-params$inpath
 #opts_knit$set(root.dir = path)
 knitr::opts_chunk$set(echo=FALSE)
-config<-read_yaml(paste(path_configs,'/config.yaml',sep=''),fileEncoding = "UTF-8")
 kallisto_path<-paste(config$FINALOUTPUT,config$PROJECT,'trans/kallisto',sep='/')
 
 ```
@@ -109,6 +109,16 @@ Plot_violin<-function(data,samples, group_size){
 
 ## reading in kallisto
 Description<-read.table(paste(path_configs,'/Description.csv',sep=''),header=TRUE,sep=',', stringsAsFactors=FALSE)
+
+repetitions<-max(Description$Repetition)
+if (repetitions <2)
+{
+  print('Too litlle repetitions, specify at least 2!')
+  knitr::knit_exit()
+}
+
+```
+```{r,warning=FALSE,message=FALSE,include=FALSE}
 dataset_size<-dim(Description)[1]
 for (i in (1:dataset_size))
 {
@@ -288,7 +298,7 @@ adj.method='BH'
 
 
 mart<-useMart(biomart="ENSEMBL_MART_ENSEMBL",
-              dataset='mmusculus_gene_ensembl',
+              dataset=config$DATSET_MART,
               host='uswest.ensembl.org')
 
 geneinfo<-getBM(c("external_gene_name","ensembl_gene_id"),"ensembl_gene_id",rownames(kallisto.t.filtered),mart)
@@ -361,40 +371,121 @@ res_DeSeq<- tt[is.finite(tt$adj.P.Val),]
 res_DeSeq2<-res_DeSeq[res_DeSeq$adj.P.Val<P_val,]
 write.csv(res_DeSeq,paste(kallisto_path,'/Results_DeSeq.csv',sep=''))
 write.csv(res_DeSeq,paste(kallisto_path,'/Results_DeSeq_pVal_',P_val,'.csv',sep=''))
-# #####topGO
-# 
-# 
-# # topDiffGenes <- function (allGene, thr=0.05)
-# # {
-# #   return(allGene < thr);
-# # }
-# # 
-# # 
-# #   for (name in colnames(cm))
-# #   {
-# #     for (ont  in c('BP','MF','CC'))
-# #     {
-# #     geneList_WTP<-get(paste(name))$adj.P.Val
-# #     names(geneList_WTP)<-rownames(get(paste(name)))
-# #     WTP.BP <- new("topGOdata",
-# #                   description = paste('Przew',name,'_',ont,sep=''), ontology = ont,
-# #                   allGenes =geneList_WTP, geneSel = topDiffGenes,
-# #                   nodeSize = 10,
-# #                   annot = annFUN.org, mapping="org.Mm.eg.db",ID="ensembl")
-# #     
-# #     #WTP.resultFisher <- runTest(WTP.BP, algorithm = "classic", statistic = "fisher")
-# #    # WTP.resultFisher.e <- runTest(WTP.BP, algorithm = "elim", statistic = "fisher")
-# #     WTP.resultFisher.pc <- runTest(WTP.BP, algorithm = "parentchild", statistic = "fisher")
-# #     
-# #     used<-usedGO(WTP.BP)
-# #     WTP.allRes <- GenTable(WTP.BP, #classicFisher = WTP.resultFisher,
-# #                            parentchildFisher=WTP.resultFisher.pc,orderBy = "parentchildFisher",
-# #                            ranksOf = "parentchildFisher",topNodes=length(used))
-# #     
-# #     assign(paste(name,'.GOs.',ont,sep=''),WTP.allRes)
-# #  } } 
-# # 
-# 
 ```
 
-# Number of differentially expressed genes with adjusted p-valye < `r P_val`: `r dim(res_DeSeq2)[1] ``
+# Number of differentially expressed genes with adjusted p-valye < `r P_val`: `r dim(res_DeSeq2)[1] `
+
+# Ven diagram for all three methods
+
+```{r,warning=FALSE,message=FALSE}
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+
+ven<-venn.diagram(x=list('Limma'=rownames(res_limma2),'EdgeR'=rownames(res_edgeR2),'DeSeq2'=rownames(res_DeSeq2)),filename=NULL,fill = c("yellow","lightgreen","mediumorchid"))
+render.venn.diagram(ven)
+```
+
+# Barplots for top 10 terms for given GO term
+
+```{r,warning=FALSE,message=FALSE}
+
+# #####topGO
+topDiffGenes <- function (allGene, thr=0.05)
+{
+  return(allGene < thr);
+}
+
+
+for (method in c('limma','edgeR','DeSeq'))
+  {
+    for (ont  in c('BP','MF','CC'))
+    {
+    name<-paste('res_',method,sep="")
+    if (dim(get(name))[1]!=0)
+    {
+    geneList<-get(name)$adj.P.Val
+    names(geneList)<-rownames(get(name))
+    res_GO <- new("topGOdata", ontology = ont,
+                  allGenes =geneList, geneSel = topDiffGenes,
+                  nodeSize = 10,
+                  annot = annFUN.org, mapping=config$GO_MAPPING,ID="ensembl")
+    WTP.resultFisher.pc <- runTest(res_GO, algorithm = "parentchild", statistic = "fisher")
+
+    used<-usedGO(res_GO)
+    GO.allRes <- GenTable(res_GO, #classicFisher = WTP.resultFisher,
+                           parentchildFisher=WTP.resultFisher.pc,orderBy = "parentchildFisher",
+                           ranksOf = "parentchildFisher",topNodes=length(used))
+    colnames(GO.allRes)[6]<-"adj.P.Val"
+    GO.allRes2<-GO.allRes[GO.allRes$adj.P.Val<config$TH_GO_HiSat,]
+    if (dim(GO.allRes2)[1]<10){b=dim(GO.allRes2)[1]}else {b=10}
+    if (b!=0)
+      {
+      for (j in c(1:b))
+        {
+          if (GO.allRes2[j,]$adj.P.Val=="< 1e-30")
+            {
+              GO.allRes2[j,]$adj.P.Val=1e-30
+            }
+        }
+        
+      names_BP<-GO.allRes2$Term[b:1]
+      par(mai=c(1,3,1,1))
+      barplot(abs(log(as.numeric(GO.allRes2[b:1,]$adj.P.Val))),main=paste('Top',b,ont,'for',method,sep=' '),
+              horiz=TRUE, names.arg = names_BP,xlim=c(0,50),las=1,col='darkblue',cex.names = 0.7,xlab="abs(log(p-value))")
+      }
+    
+    write.csv(GO.allRes,paste(hisat_path,'/Results_',method,'_',ont,'.csv',sep=''))
+    write.csv(GO.allRes2,paste(hisat_path,'/Results_',method,'_',ont,'_',config$TH_GO_HiSat,'.csv',sep=''))
+    assign(paste(method,ont,sep='_'),GO.allRes2)
+    }
+  } 
+}
+
+if (length(res_DeSeq2$adj.P.Val)>0 & length(res_edgeR2$adj.P.Val)>0 & length(res_limma2$adj.P.Val)>0)
+{
+
+ven<-venn.diagram(x=list('Limma'=limma_BP$GO.ID,'EdgeR'=edgeR_BP$GO.ID,'DeSeq2'=DeSeq_BP[,1]),
+                  filename=NULL,fill = c("yellow","lightgreen","mediumorchid"), main= "Biological Process")
+render.venn.diagram(ven)
+
+ven<-venn.diagram(x=list('Limma'=rownames(limma_CC),'EdgeR'=rownames(edgeR_CC),'DeSeq2'=rownames(DeSeq_CC)),filename=NULL,fill = c("yellow","lightgreen","mediumorchid"), main= "Cellular Component")
+render.venn.diagram(ven)
+
+ven<-venn.diagram(x=list('Limma'=rownames(limma_MF),'EdgeR'=rownames(edgeR_MF),'DeSeq2'=rownames(DeSeq_MF)),filename=NULL,fill = c("yellow","lightgreen","mediumorchid"), main= "Molecular FUnction")
+render.venn.diagram(ven)
+}else if (length(res_DeSeq2$adj.P.Val)>0 & length(res_edgeR2$adj.P.Val)>0 & length(res_limma2$adj.P.Val)==0)
+{
+  
+ven<-venn.diagram(x=list('EdgeR'=edgeR_BP$GO.ID,'DeSeq2'=DeSeq_BP[,1]),
+                  filename=NULL,fill = c("lightgreen","mediumorchid"), main= "Biological Process")
+render.venn.diagram(ven)
+
+ven<-venn.diagram(x=list('EdgeR'=rownames(edgeR_CC),'DeSeq2'=rownames(DeSeq_CC)),filename=NULL,fill = c("lightgreen","mediumorchid"), main= "Cellular Component")
+render.venn.diagram(ven)
+
+ven<-venn.diagram(x=list('EdgeR'=rownames(edgeR_MF),'DeSeq2'=rownames(DeSeq_MF)),filename=NULL,fill = c("lightgreen","mediumorchid"), main= "Molecular FUnction")
+render.venn.diagram(ven)
+}else if (length(res_DeSeq2$adj.P.Val)>0 & length(res_edgeR2$adj.P.Val)==0 & length(res_limma2$adj.P.Val)>0)
+{
+  
+ven<-venn.diagram(x=list('Limma'=limma_BP$GO.ID,'DeSeq2'=DeSeq_BP[,1]),
+                  filename=NULL,fill = c("lightgreen","mediumorchid"), main= "Biological Process")
+render.venn.diagram(ven)
+
+ven<-venn.diagram(x=list('Limma'=rownames(limma_CC),'DeSeq2'=rownames(DeSeq_CC)),filename=NULL,fill = c("lightgreen","mediumorchid"), main= "Cellular Component")
+render.venn.diagram(ven)
+
+ven<-venn.diagram(x=list('Limma'=rownames(limma_MF),'DeSeq2'=rownames(DeSeq_MF)),filename=NULL,fill = c("lightgreen","mediumorchid"), main= "Molecular FUnction")
+render.venn.diagram(ven)
+}else if (length(res_DeSeq2$adj.P.Val)==0 & length(res_edgeR2$adj.P.Val)>0 & length(res_limma2$adj.P.Val)>0)
+{
+  ven<-venn.diagram(x=list('Limma'=limma_BP$GO.ID,'EdgeR'=edgeR_BP$GO.ID),
+                  filename=NULL,fill = c("lightgreen","mediumorchid"), main= "Biological Process")
+render.venn.diagram(ven)
+
+ven<-venn.diagram(x=list('Limma'=rownames(limma_CC),'EdgeR'=rownames(edgeR_CC)),filename=NULL,fill = c("lightgreen","mediumorchid"), main= "Cellular Component")
+render.venn.diagram(ven)
+
+ven<-venn.diagram(x=list('Limma'=rownames(limma_MF),'EdgeR'=rownames(edgeR_MF)),filename=NULL,fill = c("lightgreen","mediumorchid"), main= "Molecular FUnction")
+render.venn.diagram(ven)
+}else {print("Not enough results to compare")}
+```

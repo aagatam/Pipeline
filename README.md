@@ -129,7 +129,7 @@ Install desired species release, for example:
    - results for limma, edgeR and DeSeq2 DEG (all and below given p-value) in `FINALOUTPUT`/`PROJECT`/genome/Hisat_results or `FINALOUTPUT`/`PROJECT`/trans/kallisto,
    - results for GO terms analysis in folders like above.
 
-### 10. Differential gene expression and Gene Ontology for Illumina microarrays <a name="micro"></a>
+### 10. Differential gene expression and Gene Ontology for Illumina HumanHT-12 v4 microarrays <a name="micro"></a>
  - Change `config_Illumina.yaml` and `Description_Illumina.csv`,
  - `R -e "rmarkdown::render('scripts/Expression_Illumina_ microarrays.Rmd')"`
 #### **Outputs**

@@ -39,7 +39,11 @@ BB_PATH : ./scripts/bisbee
 RELEASE: 104
 
 #Thresholds for Spladder analysis with Rmarkdown
-TH_SAMPLES: 4
+#For Spladder, HiSat and Kallisto define organism
+DATSET_MART: mmusculus_gene_ensembl #  e.g. do: mart = useMart('ensembl') then listDatasets(mart, verbose = FALSE) for others
+GO_MAPPING: org.Mm.eg.db # OrganismDb or OrgDb annotation package from Bioconductor
+
+TH_SAMPLES: 4 # How many samples should pass the condition
 TH_STD: 0.2
 TH_PSI: 0.1
 TH_GO: 0.01
@@ -51,10 +55,12 @@ BAM: /home/agata/Documents/Work/Pipeline_old/Output/Test/genome/bamFileSort/CMV_
 IP_PATH: /home/agata/Documents/Work/InterPro/interproscan-5.55-88.0
 
 #For differential expression- define which groups to check
+#HiSat
 CONTRAST_HiSat: B1_CMV_PNSLvsB1_CMV_SHAM=B1_CMV_SHAM-B1_WTP_SHAM
 P_VAL_HiSat: 0.05
 TH_GO_HiSat: 0.01
 
+#Kallisto
 CONTRAST_kallisto: B1_CMV_PNSLvsB1_CMV_SHAM=B1_CMV_SHAM-B1_WTP_SHAM
 P_VAL_kallisto: 0.05
 TH_GO_kallisto: 0.01
