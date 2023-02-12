@@ -37,8 +37,8 @@ rule spladderBuild:
         #"spladder build --parallel {config[NCORE]} --bams {params.files} --annotation {params.GTF} --outdir {params.out}"
 rule unzip_txt:
     input:
-        txt_gz = expand(splad_out+"/merge_graphs_{event}_C3.confirmed.txt.gz", event=events)
+        txt_gz = splad_out+"/merge_graphs_{event}_C3.confirmed.txt.gz"
     output:
-        txt = expand(splad_out+"/merge_graphs_{event}_C3.confirmed.txt", event=events)
+        txt = splad_out+"/merge_graphs_{event}_C3.confirmed.txt"
     shell:
         "pigz -d -k -c -p{config[NCORE]} {input.txt_gz} > {output.txt}"
