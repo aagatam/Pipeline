@@ -1,22 +1,19 @@
-# Please check the parameters, and adjust them according to your circumstance
-
 # project name
 PROJECT: Test
 
 ## the path to fastq files
-
 INPUTPATH: /home/agata/Documents/Work/Pipeline/Test_data
 
 ## the meta file describing the experiment settings
 METAFILE: configs/Description.csv
 
-## paths for intermediate and final outputs
+## path for final outputs
 FINALOUTPUT: /home/agata/Documents/Work/Pipeline/Output
 
 ## is the sequencing paired-end or pair-end?
 END: "single"  # "single" or "pair"?
 
-## is input uncompressed
+## is input compressed?
 COMPRESSION_TYPE: "dsrc" # "none", "gz", "dsrc"
 
 #switch to no if trimming was not performed
@@ -38,11 +35,11 @@ BB_PATH : ./scripts/bisbee
 ## Desired release for bisbee
 RELEASE: 104
 
-#Thresholds for Spladder analysis with Rmarkdown
 #For Spladder, HiSat and Kallisto define organism
 DATSET_MART: mmusculus_gene_ensembl #  e.g. do: mart = useMart('ensembl') then listDatasets(mart, verbose = FALSE) for others
 GO_MAPPING: org.Mm.eg.db # OrganismDb or OrgDb annotation package from Bioconductor
 
+#Thresholds for Spladder analysis with Rmarkdown
 TH_SAMPLES: 4 # How many samples should pass the condition
 TH_STD: 0.2
 TH_PSI: 0.1

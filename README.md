@@ -17,7 +17,7 @@
 
 ## How does this work?
 Snakeamke wrapper scripts (located in the `workflow` folder) enable for automatic RNA-seq data analysis in terms of quality control, assembly, quantification, gene ontology, differential gene expression and alternative splicing and it's effects on protein level. Additional 'RMarkdown' script enables final visualization for AS.
-Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline accepts either .fastq files or .fastq.dsrc files.
+Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline accepts either .fastq, fastq.gz or .fastq.dsrc files.
 
 ## 1. Requirements <a name="requirements"></a>
  - `conda` for building the environment
@@ -33,7 +33,7 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
  - `conda activate Pipeline`
 
 ## 3. Config files configuration <a name="config"></a>
- You need to adjust two files `configs/config.yaml` and `configs/Description.csv` to match your data. All the fields in first config are explained within the original file. Currently only analysis for samples with equal repetitions is available.
+ You need to adjust two files `configs/config.yaml` and `configs/Description.csv` to match your data for RNA-seq data analysis. For microarray analysis adjust  `configs/config_Illumina.yaml` and `configs/Description_Illumina.csv` All the fields in yaml configs are explained within the original file. Currently only analysis for samples with equal repetitions is available.
 
 ## 4. Running the pipeline. <a name="run"></a>
 ## Quality control, assebmle and quantification.
