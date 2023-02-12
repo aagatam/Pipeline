@@ -35,17 +35,17 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
 ## 3. Config files configuration <a name="config"></a>
  You need to adjust two files `configs/config.yaml` and `configs/Description.csv` to match your data for RNA-seq data analysis. For microarray analysis adjust  `configs/config_Illumina.yaml` and `configs/Description_Illumina.csv` All the fields in yaml configs are explained within the original file. Currently only analysis for samples with equal repetitions is available.
 
-## 4. Running the pipeline. <a name="run"></a>
-## Quality control, assebmle and quantification.
+## 4. Running the pipeline <a name="run"></a>
+## Trimming, quality control, assembly and quantification.
 
 ### 1. Trimming  <a name="trim"></a>
-  - `nohup nice snakemake --cores all --use-conda --conda-frontend conda -p -j 1 -s workflow/trim.snakefile &`
+  - `snakemake --cores all --use-conda --conda-frontend conda -p -j 1 -s workflow/trim.snakefile`
 #### **Outputs**
   - In `FINALOUTPUT`/`PROJECT`/trim:
     - trimmed fq.gz files,
     - quality report in `fastqc_after_trimming` folder
 
-### 2. Quality contol on raw reads. <a name="qc"></a>
+### 2. Quality contol on raw reads <a name="qc"></a>
  - `snakemake --cores all -p -s workflow/quality_control.snakefile`
 #### **Outputs**
   - In `FINALOUTPUT`/`PROJECT`/fastqc:
@@ -79,6 +79,8 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
 This part will index all BAM files and run Spladder.
  - `snakemake --cores all -p -s workflow/spladder_run.snakefile`
 #### **Outputs**
+ - .bai index files for all BAM files,
+ - Spladder output files in `FINALOUTPUT`/`PROJECT`/genome/spladder
 
 ### 6. Alternative events analysis with Bisbee and analysis with R <a name="asan"></a>
 This part will run Bisbbe and analyse its output files with Rmarkdown script producing report and also bunch of csv files with results and files needed for further analysis with InterProscan and visualization. Depending on dataset size, this step might take a few hours, especially during first run when necessary libraries are downloaded. \
@@ -92,7 +94,7 @@ Install desired species release, for example:
     - fasta files with transcripts including novel events.
   - In `FINALOUTPUT`/`PROJECT`/genome/spladder:
     - To_plots.csv <- file with all common events from new+new and new+old group
-    - To_plots.Rmd <- for further visualizations with Plots.Rmd
+    - To_plots.RData <- for further visualizations with Plots.Rmd
   - In `FINALOUTPUT`/`PROJECT`/genome/spladder/Script_output:
     - .txt files with common genes for three groups and all events,
     - .csv with GO terms detected for each group,
@@ -108,13 +110,13 @@ Install desired species release, for example:
  - `snakemake --cores all -p -s workflow/interproscan_run.snakefile`
 #### **Outputs**
    - In `FINALOUTPUT`/`PROJECT`/genome/bisbee:
-    - .grepped.filtered.fasta - new fasta files with only intresting events, prepared for InterProSacn analysis,
+    - .grepped.filtered.fasta - new fasta files with only intresting events, prepared for InterProScan analysis,
   - In `FINALOUTPUT`/`PROJECT`/genome/InterProScan:
    - .tsv files with InterProScan results
 
 ### 8. Final visualization with RMarkdown: <a name="plots"></a>
  - `R -e "rmarkdown::render('scripts/Plots.Rmd',params=list(event_type='event_type', event='event_no'),output_file='Out_name.pdf')"` \
- Here `event_no` is the event you want to visualize (for example mutex_exons_168) and `event_type` is one of: alt_3_prime, alt_5_prime, exon_skip, mult_exon_skip, mutex_exons (in this case mutex_exons).
+ Here `event_no` is the event you want to visualize (for example mutex_exons_168) and `event_type` is one of: alt_3_prime, alt_5_prime, exon_skip, mult_exon_skip, mutex_exons (in this case mutex_exons). List of most interesting events is provided in `To_plots.csv` file from 6th step.
 #### **Outputs**
    - Plots.pdf file with two plots for a given event. One for the whole transcript, and a close-up on the second one.
 
