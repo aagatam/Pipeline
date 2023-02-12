@@ -48,6 +48,15 @@ bb_path<-paste(config$FINALOUTPUT,config$PROJECT,'genome/bisbee',sep='/')
 dir.create(file.path(spl_path, 'Script_output'), showWarnings = FALSE)
 dir.create(file.path(bb_path, 'Filtered'), showWarnings = FALSE)
 
+repetitions<-max(Description$Repetition)
+if (repetitions <2)
+{
+  print('Too litlle repetitions, specify at least 2!')
+  knitr::knit_exit()
+}
+
+```
+```{r,warning=FALSE,message=FALSE,include=FALSE}
 
 group='Spladder'
 files<-list.files(path=spl_path,pattern='.txt$')
