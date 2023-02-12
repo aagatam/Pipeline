@@ -1,14 +1,19 @@
+######################################## SPECIFY FOR ALL STEPS ####################################
 # project name
 PROJECT: Test
-
-## the path to fastq files
-INPUTPATH: /home/agata/Documents/Work/Pipeline/Test_data
 
 ## the meta file describing the experiment settings
 METAFILE: configs/Description.csv
 
 ## path for final outputs
 FINALOUTPUT: /home/agata/Documents/Work/Pipeline/Output
+
+## number of cores
+NCORE: 9
+######################################## SPECIFY FOR ALIGNMENT, TRIMMING, QC, SPLADDER ##############
+
+## the path to fastq files
+INPUTPATH: /home/agata/Documents/Work/Pipeline/Test_data
 
 ## is the sequencing paired-end or pair-end?
 END: "single"  # "single" or "pair"?
@@ -27,13 +32,19 @@ GENOME:  /home/agata/Documents/Work/Pipeline/Test_data/Mus_musculus.GRCm39.dna.t
 ANNOTATION: /home/agata/Documents/Work/Dell_work/bisbee/Mus_musculus.GRCm39.104.gtf
 ATTRIBUTE: gene_id  # the attribute used in annotation file. It's usually "gene_id", but double check that since it may also be "gene", "ID"...
 
-## number of cores
-NCORE: 9
+######################################## SPECIFY FOR BISBEE ##########################################
 
 ## Bisbbe path
 BB_PATH : ./scripts/bisbee
 ## Desired release for bisbee
 RELEASE: 104
+
+######################################## SPECIFY FOR InterProScan ####################################
+
+## InterProScan path
+IP_PATH: /home/agata/Documents/Work/InterPro/interproscan-5.55-88.0
+
+######################################## SPECIFY FOR R  Markdown SCRIPTS #############################
 
 #For Spladder, HiSat and Kallisto define organism
 DATSET_MART: mmusculus_gene_ensembl #  e.g. do: mart = useMart('ensembl') then listDatasets(mart, verbose = FALSE) for others
@@ -48,8 +59,6 @@ TH_GO: 0.01
 #BAM file for events visualization- either for particular sample or concatenated BAM (must be indexed!)
 BAM: /home/agata/Documents/Work/Pipeline_old/Output/Test/genome/bamFileSort/CMV_PNSL_10.1.sort.bam
 
-## InterProScan path
-IP_PATH: /home/agata/Documents/Work/InterPro/interproscan-5.55-88.0
 
 #For differential expression- define which groups to check
 #HiSat
