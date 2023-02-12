@@ -2,7 +2,7 @@ import pandas as pd
 configfile: "configs/config.yaml"
 samples = pd.read_csv(config["METAFILE"], sep = ',', header = 0)['Group']
 end = config["END"]
-compressed = config["COMPRESSED"]
+compression = config['COMPRESSION_TYPE']
 final_path = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome"
 input_path = config["INPUTPATH"]
 
@@ -18,7 +18,7 @@ if end == "pair":
                 reverse = input_path + "/{sample}_R2.fastq.dsrc"
             output:
                 uncompress1 = temp(final_path + "/uncompressed/{sample}_R1.out.fastq"),
-                uncompress1 = temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
+                uncompress2 = temp(final_path + "/uncompressed/{sample}_R2.out.fastq")
             run:
                 shell("dsrc d -t{config[NCORE]} -s {input.forward} >>{output.uncompress1} ")
                 shell("dsrc d -t{config[NCORE]} -s {input.reverse} >>{output.uncompress2} ")
