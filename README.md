@@ -21,7 +21,7 @@ Additional Rmarkdown script allowas for Illumina microarrays analysis. Pipeline 
 
 ## 1. Requirements <a name="requirements"></a>
  - `conda` for building the environment
- - [`interproscan`](https://interproscan-docs.readthedocs.io/en/latest/UserDocs.html) for finding protein domains
+ - [`interproscan`](https://interproscan-docs.readthedocs.io/en/latest/UserDocs.html) and `pcregrep` for finding protein domains
  - [`dsrc`](https://github.com/refresh-bio/DSRC) if your files are dsrc compressed  
 
 ## 2. Installation <a name="installation"></a>

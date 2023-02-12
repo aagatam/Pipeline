@@ -1,7 +1,5 @@
 import pandas as pd
 configfile: "configs/config.yaml"
-
-#samples = pd.read_csv(config["METAFILE"], sep = ';', header = 0)['Sample']
 events = ['alt_3prime','alt_5prime','exon_skip','mult_exon_skip','mutex_exons']
 bisbee_out = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome/bisbee"
 interpro_out = config["FINALOUTPUT"] + "/" + config["PROJECT"] + "/genome/InterProScan"
