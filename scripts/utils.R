@@ -53,3 +53,8 @@ Plot_violin<-function(data,samples, group_size){
   pl + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
   
 }
+
+topDiffGenes <- function (allGene, thr=0.05)
+{
+  return(allGene < thr);
+}
