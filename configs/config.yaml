@@ -6,17 +6,18 @@ PROJECT: Test
 METAFILE: configs/Description.csv
 
 ## path for final outputs
-FINALOUTPUT: /home/agata/Documents/Work/Pipeline/Output
+FINALOUTPUT: /Users/agatamuszynska/Documents/New_pipeline/Pipeline/Output
+INTERMEDIATEPATH: "/Users/agatamuszynska/Documents/New_pipeline/Pipelineintermediate" # e.g., "results/intermediate"
 
 ## number of cores
 NCORE: 9
 ######################################## SPECIFY FOR ALIGNMENT, TRIMMING, QC, SPLADDER ##############
 
 ## the path to fastq files
-INPUTPATH: /home/agata/Documents/Work/Pipeline/Test_data
+INPUTPATH: /Users/agatamuszynska/Documents/New_pipeline/Pipeline/Test_data
 
 ## is the sequencing paired-end or pair-end?
-END: "single"  # "single" or "pair"?
+end: "single"  # "single" or "pair"?
 
 ## is input compressed?
 COMPRESSION_TYPE: "dsrc" # "none", "gz", "dsrc"
