@@ -1,32 +1,30 @@
-samples = pd.read_csv(config["METAFILE"], sep=',', header=0)['Group']
-input_path = config["INPUTPATH"]
-final_path = f"{config['FINALOUTPUT']}/{config['PROJECT']}/genome"
+# workflow/rules/quality_control.snakefile
 
-rule end:
+rule qc_end:
     input:
         report = final_path + "/fastqc/report_quality_control.html"
 
 # ===== SINGLE RULE FOR QUALITY CONTROL (FASTQC) =====
 rule qualityControl:
     input:
-        # Dynamic input: Paired-end or single-end?
+        # Now takes input from trimmed files instead of uncompressed
         files = (
             [
-                final_path + "/uncompressed/{sample}_R1.out.fastq",
-                final_path + "/uncompressed/{sample}_R2.out.fastq"
+                f"{intermediate_path}/{{sample}}_val_1.fq.gz",
+                f"{intermediate_path}/{{sample}}_val_2.fq.gz"
             ]
             if config.get("end", "pair") == "pair"
-            else final_path + "/uncompressed/{sample}.out.fastq"
+            else f"{intermediate_path}/{{sample}}_trimmed.fq.gz"
         )
     output:
-        # Dynamic output: Paired-end or single-end?
+        # Updated output file names to reflect trimmed input
         html_files = (
             [
-                final_path + "/fastqc/{sample}_R1_fastqc.html",
-                final_path + "/fastqc/{sample}_R2_fastqc.html"
+                final_path + "/fastqc/{sample}_val_1_fastqc.html",
+                final_path + "/fastqc/{sample}_val_2_fastqc.html"
             ]
             if config.get("end", "pair") == "pair"
-            else final_path + "/fastqc/{sample}.out_fastqc.html"
+            else final_path + "/fastqc/{sample}_trimmed_fastqc.html"
         )
     params:
         outputpath = final_path + "/fastqc"
@@ -37,14 +35,14 @@ rule qualityControl:
 # ===== SINGLE RULE FOR SUMMARY REPORT (MULTIQC) =====
 rule summaryReport:
     input:
-        # Dynamic input: Collect all FastQC outputs
+        # Dynamic input: Collect all FastQC outputs from trimmed files
         fastqc_files = (
-            # Paired-end: R1 and R2 for all samples
-            expand(final_path + "/fastqc/{sample}_R1_fastqc.html", sample=samples) +
-            expand(final_path + "/fastqc/{sample}_R2_fastqc.html", sample=samples)
+            # Paired-end: val_1 and val_2 for all samples
+            expand(final_path + "/fastqc/{sample}_val_1_fastqc.html", sample=samples) +
+            expand(final_path + "/fastqc/{sample}_val_2_fastqc.html", sample=samples)
             if config.get("end", "pair") == "pair"
-            # Single-end: One file per sample
-            else expand(final_path + "/fastqc/{sample}.out_fastqc.html", sample=samples)
+            # Single-end: One trimmed file per sample
+            else expand(final_path + "/fastqc/{sample}_trimmed_fastqc.html", sample=samples)
         )
     output:
         report = final_path + "/fastqc/report_quality_control.html"

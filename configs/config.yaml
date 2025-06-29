@@ -22,15 +22,17 @@ end: "single"  # "single" or "pair"?
 ## is input compressed?
 COMPRESSION_TYPE: "dsrc" # "none", "gz", "dsrc"
 
+TRIM: "yes"  # or "no"
+
 #switch to no if trimming was not performed
 TRIMMED: "yes"
 
 ## transcriptome file
-TRANS: /home/agata/Documents/Work/Pipeline/Test_data/Mus_musculus.GRCm38.cdna.all.fa
+TRANS: /Users/agatamuszynska/Documents/New_pipeline/Pipeline/Test_data/Mus_musculus.GRCm38.cdna.all.fa
 
 ## genome and annotation files
-GENOME:  /home/agata/Documents/Work/Pipeline/Test_data/Mus_musculus.GRCm39.dna.toplevel.fa
-ANNOTATION: /home/agata/Documents/Work/Dell_work/bisbee/Mus_musculus.GRCm39.104.gtf
+GENOME:  /Users/agatamuszynska/Documents/New_pipeline/Pipeline/Test_data/Mus_musculus.GRCm39.dna.toplevel.fa
+ANNOTATION: /Users/agatamuszynska/Documents/New_pipeline/Pipeline/Test_data/Mus_musculus.GRCm39.104.gtf
 ATTRIBUTE: gene_id  # the attribute used in annotation file. It's usually "gene_id", but double check that since it may also be "gene", "ID"...
 
 ######################################## SPECIFY FOR BISBEE ##########################################
