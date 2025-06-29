@@ -1,19 +1,28 @@
 # Snakefile
 
-# Load main config
+import pandas as pd
+
+# --- Load config and variables ---
 configfile: "configs/config.yaml"
+samples = pd.read_csv(config["METAFILE"], sep=',', header=0)['Group']
+end = config["END"]
+compression = config["COMPRESSION_TYPE"]
+final_path = f"{config['FINALOUTPUT']}/{config['PROJECT']}/genome"
+input_path = config["INPUTPATH"]
 
 # Include rule files
-include: "workflow/trim.snakefile"
-include: "workflow/quality_control.snakefile"
-include: "workflow/align_HiSat2.snakefile"
-include: "workflow/align_kallisto.snakefile"
-include: "workflow/spladder_run.snakefile"
-include: "workflow/bisbee_run.snakefile"
-include: "workflow/interproscan_run.snakefile"
+include: "workflow/rules/trim.snakefile"
+include: "workflow/rules/quality_control.snakefile"
+include: "workflow/rules/align_HiSat2.snakefile"
+include: "workflow/rules/align_kallisto.snakefile"
+include: "workflow/rules/spladder_run.snakefile"
+include: "workflow/rules/bisbee_run.snakefile"
+include: "workflow/rules/interproscan_run.snakefile"
+include: "workflow/rules/uncompress.smk"
+
+sys.path.append("workflow/scripts")
+from uncompress_helpers import *
 
 rule all:
     input:
-        expand("FINALOUTPUT/PROJECT/genome/bisbee/{sample}.grepped.filtered.fasta", sample=SAMPLES),
-        expand("FINALOUTPUT/PROJECT/genome/InterProScan/{sample}.tsv", sample=SAMPLES)
-
+        report = final_path + "/fastqc/report_quality_control.html"
