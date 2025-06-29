@@ -1,5 +1,3 @@
-# workflow/rules/alignment.snakefile
-
 rule al_kallisto_end:
     input:
         report = final_path + "/report_align_count.html",
