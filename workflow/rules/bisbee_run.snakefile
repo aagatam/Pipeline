@@ -46,4 +46,4 @@ rule markdown:
         'scripts/Spladder.pdf'
     run:
         shell("touch {input.CSV_PROT}")
-        shell("Rscript -e \"rmarkdown::render('scripts/Spladder.Rmd')\"")
+        shell("Rscript -e \"rmarkdown::render('scripts/analysis/Spladder.Rmd')\"")
