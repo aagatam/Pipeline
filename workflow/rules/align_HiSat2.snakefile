@@ -84,7 +84,7 @@ rule prepDE:
         gene_mat = final_path_genome + "/gene_count_matrix.csv",
         trans_mat = final_path_genome + "/transcript_count_matrix.csv"
     shell:
-        "python ./scripts/prepDE.py -i {params.GTF} -g {output.gene_mat} -t {output.trans_mat} "
+        "python ./scripts/python/prepDE.py -i {params.GTF} -g {output.gene_mat} -t {output.trans_mat} "
 
 rule Report_hisatt:
     input:

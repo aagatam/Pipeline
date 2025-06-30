@@ -22,11 +22,6 @@ end: "single"  # "single" or "pair"?
 ## is input compressed?
 COMPRESSION_TYPE: "dsrc" # "none", "gz", "dsrc"
 
-TRIM: "yes"  # or "no"
-
-#switch to no if trimming was not performed
-TRIMMED: "yes"
-
 ## transcriptome file
 TRANS: /Users/agatamuszynska/Documents/New_pipeline/Pipeline/Test_data/Mus_musculus.GRCm38.cdna.all.fa
 
