@@ -1,96 +1,70 @@
-indexes = list(range(1, 9))
+########################################
+# HISAT2 genome alignment
+########################################
 
-rule hi_alignment_end:
-    input:
-        GTF = expand(final_path_genome + "/countFile/{sample}/{sample}.gtf",sample=samples),
-        report = final_path_genome + "/report_align_count.html",
-        gene_mat = final_path_genome + "/gene_count_matrix.csv",
-        trans_mat = final_path_genome + "/transcript_count_matrix.csv"
+GENOME = config["reference"]["genome_fasta"]
+THREADS = config["alignment"]["threads"]
+LAYOUT = config["sequencing"]["layout"]
 
-rule indexGenome:
+INDEX_PREFIX = f"{OUTDIR}/{PROJECT}/genome/index/hisat2_index"
+
+########################################
+# Build HISAT2 index (once)
+########################################
+
+rule hisat2_index:
     input:
-        genome = config["GENOME"]
+        GENOME
     output:
-        indexes = expand(final_path_genome + "/indexes/index.{index}.ht2", index = indexes),
-
-    params:
-        index = index_path_genome + "/indexes/index"
-    priority: 10
-    shell:
-        "hisat2-build -p {config[NCORE]} {input.genome} {params.index}"
-
-rule alignment_hisat:
-    input:
-        index = expand(index_path_genome + "/indexes/index.{index}.ht2", index = indexes),
-        # Input from trimmed uncompressed files
-        read1 = f"{final_path}/trimmed_uncompressed/{{sample}}_val_1.fastq",
-        read2 = f"{final_path}/trimmed_uncompressed/{{sample}}_val_2.fastq",
-        single = f"{final_path}/trimmed_uncompressed/{{sample}}_trimmed.fastq"
-    output:
-        sam = temp(final_path_genome + "/samFile/{sample}.sam"),
-        bam = temp(final_path_genome + "/bamFile/{sample}.bam"),
-        unaligned = temp(final_path_genome + "/unaligned/{sample}.sam"),
-        unaligned_bam = final_path + "/unaligned/{sample}.bam",
-        log = final_path_genome + "/countFile/{sample}/{sample}_log.txt"
-    params:
-        index = index_path_genome + "/indexes/index",
-        is_paired = lambda wildcards: config.get("end", "pair") == "pair"
-    benchmark:
-        final_path_genome + "/benchmarks/{sample}.hisat2.benchmark.txt"
+        expand(INDEX_PREFIX + ".{i}.ht2", i=range(1,9))
+    log:
+        f"{OUTDIR}/{PROJECT}/genome/logs/hisat2_index.log"
+    threads: THREADS
     shell:
         """
-        if [ "{params.is_paired}" == "True" ]; then
-            hisat2 -q -p {config[NCORE]} -x {params.index} -1 {input.read1} -2 {input.read2} -S {output.sam} --un {output.unaligned}
-            samtools view -@ {config[NCORE]} -b -S {output.sam} > {output.bam}
-            samtools view -@ {config[NCORE]} -b -S {output.unaligned} > {output.unaligned_bam}
+        mkdir -p {OUTDIR}/{PROJECT}/genome/index
+        mkdir -p {OUTDIR}/{PROJECT}/genome/logs
+
+        hisat2-build {input} {INDEX_PREFIX} \
+            > {log} 2>&1
+        """
+
+
+########################################
+# Align reads
+########################################
+
+rule hisat2_align:
+    input:
+        index = rules.hisat2_index.output,
+        r1 = f"{OUTDIR}/{PROJECT}/trim/{{sample}}_R1.trimmed.fastq.gz",
+        r2 = f"{OUTDIR}/{PROJECT}/trim/{{sample}}_R2.trimmed.fastq.gz" if LAYOUT == "paired" else None
+    output:
+        bam = f"{OUTDIR}/{PROJECT}/genome/bam/{{sample}}.sorted.bam"
+    log:
+        f"{OUTDIR}/{PROJECT}/genome/logs/{{sample}}.hisat2.log"
+    threads: THREADS
+    shell:
+        """
+        mkdir -p {OUTDIR}/{PROJECT}/genome/bam
+        mkdir -p {OUTDIR}/{PROJECT}/genome/logs
+
+        if [ "{LAYOUT}" = "paired" ]; then
+            hisat2 \
+                -x {INDEX_PREFIX} \
+                -1 {input.r1} \
+                -2 {input.r2} \
+                -p {threads} 2>> {log} \
+            | samtools view -bS - \
+            | samtools sort -@ {threads} -o {output.bam}
         else
-            hisat2 -q -p {config[NCORE]} -x {params.index} --summary-file {output.log} -U {input.single} -S {output.sam} --un {output.unaligned}
-            samtools view -@ {config[NCORE]} -b -S {output.sam} > {output.bam}
+            hisat2 \
+                -x {INDEX_PREFIX} \
+                -U {input.r1} \
+                -p {threads} 2>> {log} \
+            | samtools view -bS - \
+            | samtools sort -@ {threads} -o {output.bam}
         fi
+
+        samtools index {output.bam}
         """
-
-rule sortBAM:
-    input:
-        bam = final_path_genome + "/bamFile/{sample}.bam"
-    output:
-        sort = final_path_genome + "/bamFileSort/{sample}.sort.bam"
-    shell:
-        "samtools sort -@ {config[NCORE]} {input.bam} -o {output.sort}"
-
-rule alignmentQC:
-    input:
-        sort = final_path_genome + "/bamFileSort/{sample}.sort.bam"
-    output:
-        bamqc = directory(final_path_genome + "/alignmentQC/{sample}_BAMqc")
-    shell:
-        "qualimap bamqc -bam {input.sort} --java-mem-size=4G -outdir {output.bamqc}"
-
-rule featureCount:
-    input:
-        sort = final_path_genome + "/bamFileSort/{sample}.sort.bam",
-        annotation = config["ANNOTATION"]
-    output:
-        GENE = final_path_genome + "/countFile/{sample}/{sample}_gene.out",
-        GTF = final_path_genome + "/countFile/{sample}/{sample}.gtf"
-    run:
-        shell("stringtie {input.sort} -G {input.annotation} -o {output.GTF} -A {output.GENE} -p 8 -e -B")
-
-rule prepDE:
-    input:
-        GTF = expand(final_path_genome + "/countFile/{sample}/{sample}.gtf",sample=samples)
-    params:
-        GTF = final_path_genome + "/countFile"
-    output:
-        gene_mat = final_path_genome + "/gene_count_matrix.csv",
-        trans_mat = final_path_genome + "/transcript_count_matrix.csv"
-    shell:
-        "python ./scripts/python/prepDE.py -i {params.GTF} -g {output.gene_mat} -t {output.trans_mat} "
-
-rule Report_hisatt:
-    input:
-        bamqc = expand(final_path_genome + "/alignmentQC/{sample}_BAMqc", sample = samples),
-        count_summary = expand(final_path_genome + "/countFile/{sample}/{sample}_log.txt", sample = samples)
-    output:
-        report = final_path_genome + "/report_align_count.html"
-    shell:
-        "multiqc -f {input.bamqc} {input.count_summary} --filename {output.report}"

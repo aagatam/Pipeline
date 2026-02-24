@@ -1,52 +1,52 @@
-# workflow/rules/quality_control.snakefile
+########################################
+# Quality Control with FastQC + MultiQC
+########################################
 
-rule qc_end:
-    input:
-        report = final_path + "/fastqc/report_quality_control.html"
+LAYOUT = config["sequencing"]["layout"]
 
-# ===== SINGLE RULE FOR QUALITY CONTROL (FASTQC) =====
-rule qualityControl:
+rule fastqc:
     input:
-        # Now takes input from trimmed files instead of uncompressed
-        files = (
-            [
-                f"{intermediate_path}/{{sample}}_val_1.fq.gz",
-                f"{intermediate_path}/{{sample}}_val_2.fq.gz"
-            ]
-            if config.get("end", "pair") == "pair"
-            else f"{intermediate_path}/{{sample}}_trimmed.fq.gz"
+        r1 = f"{OUTDIR}/{PROJECT}/trim/{{sample}}_R1.trimmed.fastq.gz",
+        r2 = f"{OUTDIR}/{PROJECT}/trim/{{sample}}_R2.trimmed.fastq.gz" if LAYOUT == "paired" else None
+    output:
+        r1_html = f"{OUTDIR}/{PROJECT}/qc/fastqc/{{sample}}_R1_fastqc.html",
+        r2_html = f"{OUTDIR}/{PROJECT}/qc/fastqc/{{sample}}_R2_fastqc.html" if LAYOUT == "paired" else None
+    log:
+        f"{OUTDIR}/{PROJECT}/logs/fastqc/{{sample}}.log"
+    threads: 2
+    shell:
+        """
+        mkdir -p {OUTDIR}/{PROJECT}/qc/fastqc
+        mkdir -p {OUTDIR}/{PROJECT}/logs/fastqc
+
+        if [ "{LAYOUT}" = "paired" ]; then
+            fastqc {input.r1} {input.r2} \
+                --outdir {OUTDIR}/{PROJECT}/qc/fastqc \
+                > {log} 2>&1
+        else
+            fastqc {input.r1} \
+                --outdir {OUTDIR}/{PROJECT}/qc/fastqc \
+                > {log} 2>&1
+        fi
+        """
+        
+
+rule multiqc:
+    input:
+        expand(
+            f"{OUTDIR}/{PROJECT}/qc/fastqc/{{sample}}_R1_fastqc.html",
+            sample=SAMPLES
         )
     output:
-        # Updated output file names to reflect trimmed input
-        html_files = (
-            [
-                final_path + "/fastqc/{sample}_val_1_fastqc.html",
-                final_path + "/fastqc/{sample}_val_2_fastqc.html"
-            ]
-            if config.get("end", "pair") == "pair"
-            else final_path + "/fastqc/{sample}_trimmed_fastqc.html"
-        )
-    params:
-        outputpath = final_path + "/fastqc"
+        f"{OUTDIR}/{PROJECT}/qc/multiqc_report.html"
+    log:
+        f"{OUTDIR}/{PROJECT}/logs/multiqc.log"
     shell:
-        # Dynamic shell command: Run FastQC on 1 or 2 files
-        "fastqc -t {config[NCORE]} -o {params.outputpath} {input.files}"
+        """
+        mkdir -p {OUTDIR}/{PROJECT}/qc
+        mkdir -p {OUTDIR}/{PROJECT}/logs
 
-# ===== SINGLE RULE FOR SUMMARY REPORT (MULTIQC) =====
-rule summaryReport:
-    input:
-        # Dynamic input: Collect all FastQC outputs from trimmed files
-        fastqc_files = (
-            # Paired-end: val_1 and val_2 for all samples
-            expand(final_path + "/fastqc/{sample}_val_1_fastqc.html", sample=samples) +
-            expand(final_path + "/fastqc/{sample}_val_2_fastqc.html", sample=samples)
-            if config.get("end", "pair") == "pair"
-            # Single-end: One trimmed file per sample
-            else expand(final_path + "/fastqc/{sample}_trimmed_fastqc.html", sample=samples)
-        )
-    output:
-        report = final_path + "/fastqc/report_quality_control.html"
-    params:
-        path = final_path + "/fastqc"
-    shell:
-        "multiqc {params.path} --filename {output.report}"
+        multiqc {OUTDIR}/{PROJECT}/qc/fastqc \
+            -o {OUTDIR}/{PROJECT}/qc \
+            > {log} 2>&1
+        """
