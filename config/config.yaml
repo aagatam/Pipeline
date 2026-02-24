@@ -4,23 +4,17 @@ project:
   output_dir: results
 
 input:
-  samples: config/samples.tsv
+  samples: Test_data/samples.tsv
   compression: gz
-
-sequencing:
-  layout: paired
 
 # References
 reference:
-  genome_fasta: /path/to/genome.fa
-  annotation_gtf: /path/to/annotation.gtf
-  transcriptome_fasta: /path/to/cdna.fa
+  genome_fasta: Test_data/genome.fa
+  annotation_gtf: Test_data/annotation.gtf
+  transcriptome_fasta: Test_data/transcripts.fa
 
 sequencing:
-  layout: single # single | paired
-
-input:
-  compression: dsrc # none | gz | dsrc
+  layout: paired # single | paired
 
 # Tools
 trimming:

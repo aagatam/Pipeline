@@ -2,7 +2,7 @@
 # Load config
 ########################################
 
-configfile: "../config/config.yaml"
+configfile: "config/config.yaml"
 
 import pandas as pd
 
