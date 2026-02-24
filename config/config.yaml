@@ -3,17 +3,24 @@ project:
   name: my_project
   output_dir: results
 
-# Input type
-mode: rnaseq # options: rnaseq | microarray
+input:
+  samples: config/samples.tsv
+  compression: gz
 
-# Samples
-samples: config/samples.tsv
+sequencing:
+  layout: paired
 
 # References
 reference:
   genome_fasta: /path/to/genome.fa
   annotation_gtf: /path/to/annotation.gtf
   transcriptome_fasta: /path/to/cdna.fa
+
+sequencing:
+  layout: single # single | paired
+
+input:
+  compression: dsrc # none | gz | dsrc
 
 # Tools
 trimming:
@@ -29,6 +36,7 @@ spladder:
 
 bisbee:
   enabled: true
+  ensembl_release: 104
 
 interproscan:
   enabled: true

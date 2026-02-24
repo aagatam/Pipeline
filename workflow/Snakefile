@@ -1,30 +1,63 @@
 ########################################
-# Load config and variables
+# Load config
 ########################################
 
 configfile: "../config/config.yaml"
+
+import pandas as pd
+
+########################################
+# Global variables
+########################################
+
 PROJECT = config["project"]["name"]
 OUTDIR = config["project"]["output_dir"]
-SAMPLES = [row.split("\t")[0] for row in open(config["samples"]) if not row.startswith("sample")]
 
+samples_df = pd.read_csv(config["input"]["samples"], sep="\t")
+SAMPLES = samples_df["sample"].tolist()
 
 ########################################
 # Include rule modules
 ########################################
 
-include: "rules/uncompress.snakefile"
-include: "rules/trim.snakefile"
-include: "rules/quality_control.snakefile"
-include: "rules/align_kallisto.snakefile"
-include: "rules/align_HiSat2.snakefile"
-include: "rules/spladder_run.snakefile"
-include: "rules/bisbee_run.snakefile"
-include: "rules/interproscan_run.snakefile"
+include: "rules/uncompress.smk"
+include: "rules/trim.smk"
+include: "rules/quality_control.smk"
+
+if config["alignment"]["method"] == "hisat2":
+    include: "rules/align_hisat2.smk"
+elif config["alignment"]["method"] == "kallisto":
+    include: "rules/align_kallisto.smk"
+else:
+    raise ValueError("Invalid alignment method in config.")
+
+if config["spladder"]["enabled"]:
+    include: "rules/spladder.smk"
+
+if config["bisbee"]["enabled"]:
+    include: "rules/bisbee.smk"
+
+if config["interproscan"]["enabled"]:
+    include: "rules/interproscan.smk"
 
 ########################################
 # Final targets
 ########################################
 
+final_targets = []
+
+if config["alignment"]["method"] == "hisat2":
+    final_targets += expand(
+        f"{OUTDIR}/{PROJECT}/genome/bam/{{sample}}.sorted.bam",
+        sample=SAMPLES
+    )
+
+if config["alignment"]["method"] == "kallisto":
+    final_targets += expand(
+        f"{OUTDIR}/{PROJECT}/trans/kallisto/{{sample}}/abundance.tsv",
+        sample=SAMPLES
+    )
+
 rule all:
     input:
-        expand(f"{OUTDIR}/{PROJECT}/final/{sample}.done", sample=SAMPLES)
+        final_targets
