@@ -1,70 +1,38 @@
-######################################## SPECIFY FOR ALL STEPS ####################################
-# project name
-PROJECT: Test
+# Project metadata
+project:
+  name: my_project
+  output_dir: results
 
-## the meta file describing the experiment settings
-METAFILE: configs/Description.csv
+# Input type
+mode: rnaseq # options: rnaseq | microarray
 
-## path for final outputs
-FINALOUTPUT: /Users/agatamuszynska/Documents/New_pipeline/Pipeline/Output
-INTERMEDIATEPATH: "/Users/agatamuszynska/Documents/New_pipeline/Pipelineintermediate" # e.g., "results/intermediate"
+# Samples
+samples: config/samples.tsv
 
-## number of cores
-NCORE: 9
-######################################## SPECIFY FOR ALIGNMENT, TRIMMING, QC, SPLADDER ##############
+# References
+reference:
+  genome_fasta: /path/to/genome.fa
+  annotation_gtf: /path/to/annotation.gtf
+  transcriptome_fasta: /path/to/cdna.fa
 
-## the path to fastq files
-INPUTPATH: /Users/agatamuszynska/Documents/New_pipeline/Pipeline/Test_data
+# Tools
+trimming:
+  enabled: true
+  threads: 4
 
-## is the sequencing paired-end or pair-end?
-end: "single"  # "single" or "pair"?
+alignment:
+  method: hisat2 # hisat2 | kallisto
+  threads: 8
 
-## is input compressed?
-COMPRESSION_TYPE: "dsrc" # "none", "gz", "dsrc"
+spladder:
+  enabled: true
 
-## transcriptome file
-TRANS: /Users/agatamuszynska/Documents/New_pipeline/Pipeline/Test_data/Mus_musculus.GRCm38.cdna.all.fa
+bisbee:
+  enabled: true
 
-## genome and annotation files
-GENOME:  /Users/agatamuszynska/Documents/New_pipeline/Pipeline/Test_data/Mus_musculus.GRCm39.dna.toplevel.fa
-ANNOTATION: /Users/agatamuszynska/Documents/New_pipeline/Pipeline/Test_data/Mus_musculus.GRCm39.104.gtf
-ATTRIBUTE: gene_id  # the attribute used in annotation file. It's usually "gene_id", but double check that since it may also be "gene", "ID"...
+interproscan:
+  enabled: true
 
-######################################## SPECIFY FOR BISBEE ##########################################
-
-## Bisbbe path
-BB_PATH : ./scripts/bisbee
-## Desired release for bisbee
-RELEASE: 104
-
-######################################## SPECIFY FOR InterProScan ####################################
-
-## InterProScan path
-IP_PATH: /home/agata/Documents/Work/InterPro/interproscan-5.55-88.0
-
-######################################## SPECIFY FOR R  Markdown SCRIPTS #############################
-
-#For Spladder, HiSat and Kallisto define organism
-DATSET_MART: mmusculus_gene_ensembl #  e.g. do: mart = useMart('ensembl') then listDatasets(mart, verbose = FALSE) for others
-GO_MAPPING: org.Mm.eg.db # OrganismDb or OrgDb annotation package from Bioconductor
-
-#Thresholds for Spladder analysis with Rmarkdown
-TH_SAMPLES: 4 # How many samples should pass the condition
-TH_STD: 0.2
-TH_PSI: 0.1
-TH_GO: 0.01
-
-#BAM file for events visualization- either for particular sample or concatenated BAM (must be indexed!)
-BAM: /home/agata/Documents/Work/Pipeline_old/Output/Test/genome/bamFileSort/CMV_PNSL_10.1.sort.bam
-
-
-#For differential expression- define which groups to check
-#HiSat
-CONTRAST_HiSat: B1_CMV_PNSLvsB1_CMV_SHAM=B1_CMV_SHAM-B1_WTP_SHAM
-P_VAL_HiSat: 0.05
-TH_GO_HiSat: 0.01
-
-#Kallisto
-CONTRAST_kallisto: B1_CMV_PNSLvsB1_CMV_SHAM=B1_CMV_SHAM-B1_WTP_SHAM
-P_VAL_kallisto: 0.05
-TH_GO_kallisto: 0.01
+# Differential expression
+dge:
+  method: deseq2
