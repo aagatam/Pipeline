@@ -12,6 +12,7 @@ dependencies:
   - bioconductor-sva
   - bioconductor-topgo
   - bioconductor-biomart
+  - bioconductor-GenomicFeatures
   - r-ggplot2
   - r-gplots
   - r-rcolorbrewer
