@@ -25,7 +25,16 @@ library(RColorBrewer)
 library(VennDiagram)
 library(gridExtra)
 library(statmod)
+library(GenomicFeatures)
 
+#For debug
+#params <- list(
+#  quant_method = "kallisto",
+# config_path = "config",
+#  samples_path = "Test_data/samples.tsv",
+#  utils_path = "scripts/utils.R"
+#)
+#For debug
 config <- read_yaml(file.path(params$config_path, "config.yaml"))
 
 source(params$utils_path)
@@ -63,32 +72,59 @@ if (params$quant_method == "hisat2") {
                          config$project$name,
                          "trans/kallisto")
 
-  data_list <- lapply(Description$sample, function(name) {
-    read.table(
+  tx_list <- lapply(Description$sample, function(name) {
+    tab <- read.table(
       file.path(base_path, name, "abundance.tsv"),
       header = TRUE,
-      row.names = 1
-    )$est_counts
+      stringsAsFactors = FALSE
+    )
+    tab[, c("target_id", "est_counts")]
   })
 
-  count_matrix <- do.call(cbind, data_list)
-  rownames(count_matrix) <- rownames(
-    read.table(file.path(base_path,
-                         Description$sample[1],
-                         "abundance.tsv"),
-               header = TRUE,
-               row.names = 1)
+  tx_ids <- tx_list[[1]]$target_id
+
+  count_matrix_tx <- do.call(
+    cbind,
+    lapply(tx_list, function(x) x$est_counts)
   )
+
+  rownames(count_matrix_tx) <- tx_ids
+  colnames(count_matrix_tx) <- Description$sample
+
+  gtf_path <- file.path("Test_data", "annotation.gtf")
+
+  txdb <- makeTxDbFromGFF(gtf_path)
+
+  tx2gene <- select(txdb,
+                    keys = keys(txdb, keytype = "TXNAME"),
+                    keytype = "TXNAME",
+                    columns = "GENEID")
+
+  colnames(tx2gene) <- c("TXNAME", "GENEID")
+
+  tx_df <- as.data.frame(count_matrix_tx)
+  tx_df$TXNAME <- rownames(tx_df)
+
+  tx_df <- merge(tx_df, tx2gene, by = "TXNAME")
+
+  count_matrix_gene <- aggregate(
+    . ~ GENEID,
+    data = tx_df[, -1],
+    FUN = sum
+  )
+
+  rownames(count_matrix_gene) <- count_matrix_gene$GENEID
+  count_matrix_gene$GENEID <- NULL
+
+  count_matrix <- as.matrix(count_matrix_gene)
 }
 
 dataset_size <- nrow(Description)
 
-Description$Name <- paste(
-  "B",
-  Description$Batch,
-  "_",
-  Description$Condition,
-  sep=""
+Description$Name <- paste0(
+  "B", Description$Batch,
+  "_", Description$Condition,
+  "_R", Description$Repetition
 )
 
 colnames(count_matrix) <- Description$Name
@@ -341,7 +377,7 @@ keep <- filterByExpr(y)
 y <- y[keep,,keep.lib.sizes=FALSE]
 y <- calcNormFactors(y)
 
-y <- estimateDisp(y,mmod1,robust=TRUE)
+y <- estimateDisp(y,mmod1,robust=FALSE)
 fit_edge <- glmQLFit(y,mmod1,robust=TRUE)
 
 qlf <- glmQLFTest(fit_edge,contrast=cm)
@@ -431,7 +467,7 @@ GO_results <- list()
 
 for (method in methods) {
 
-  res_obj <- get(paste0("res_", method, "2"))
+  res_obj <- get(paste0("res_", method))
 
   if (nrow(res_obj) == 0) next
 
