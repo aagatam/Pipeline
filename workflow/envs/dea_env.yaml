@@ -1,0 +1,21 @@
+name: dea_env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - r-base=4.3
+  - r-yaml
+  - r-limma
+  - bioconductor-edger
+  - bioconductor-deseq2
+  - bioconductor-sva
+  - bioconductor-topgo
+  - bioconductor-biomart
+  - r-ggplot2
+  - r-gplots
+  - r-rcolorbrewer
+  - r-gridextra
+  - r-statmod
+  - r-venndiagram
+  - r-rmarkdown
