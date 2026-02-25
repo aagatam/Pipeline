@@ -5,10 +5,10 @@ output:
     toc: true
     number_sections: true
 params:
-  quant_method: "hisat2"        # hisat2 | kallisto
-  config_path: "../config"
-  utils_path: "../scripts/R/utils.R"
-  output_dir: "results"
+  quant_method: "hisat2"
+  config_path: "config"
+  samples_path: "Test_data/samples.tsv"
+  utils_path: "scripts/utils.R"
 ---
 
 ```{r setup, include=FALSE}
@@ -35,7 +35,12 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
 ```{r data_loading}
 
-Description <- read.csv(file.path(params$config_path, "Description.csv"))
+Description <- read.table(
+  params$samples_path,
+  sep = "\t",
+  header = TRUE,
+  stringsAsFactors = FALSE
+)
 
 if (max(Description$Repetition) < 2) {
   stop("Too few repetitions (min 2 required)")
@@ -58,7 +63,7 @@ if (params$quant_method == "hisat2") {
                          config$project$name,
                          "trans/kallisto")
 
-  data_list <- lapply(Description$Group, function(name) {
+  data_list <- lapply(Description$sample, function(name) {
     read.table(
       file.path(base_path, name, "abundance.tsv"),
       header = TRUE,
@@ -69,7 +74,7 @@ if (params$quant_method == "hisat2") {
   count_matrix <- do.call(cbind, data_list)
   rownames(count_matrix) <- rownames(
     read.table(file.path(base_path,
-                         Description$Group[1],
+                         Description$sample[1],
                          "abundance.tsv"),
                header = TRUE,
                row.names = 1)
@@ -110,7 +115,8 @@ counts_log <- log2(counts_filtered+0.5)
 
 ```{r,warning=FALSE,message=FALSE,fig.align='left'}
 IQR <- apply(counts_filtered,1,IQR)
-topVar <- order(IQR,decreasing=TRUE)[1:100]
+n_top <- min(100, nrow(counts_log))
+topVar <- order(IQR, decreasing=TRUE)[1:n_top]
 
 heatmap.2(as.matrix(counts_log[topVar,]),
           scale="row",
@@ -156,72 +162,93 @@ Plot_violin(counts_filtered, samples, group_size)
 
 ```{r limma_sva}
 #############################
-# LIMMA + VOOM + ROBUST SVA 
+# LIMMA + VOOM 
 #############################
 
 dge <- DGEList(counts = counts_filtered, group = samples)
 dge <- calcNormFactors(dge)
 
-## Design matrices
 mod1 <- model.matrix(~0 + as.factor(samples))
 mod0 <- model.matrix(~1, data = as.factor(samples))
-
 colnames(mod1) <- levels(factor(samples))
 rownames(mod1) <- colnames(counts_filtered)
 
-## Voom transform
 v <- voom(dge, mod1, plot = FALSE)
-
 to_sva <- 2^v$E
 
 #############################
-# ESTIMATE NUMBER OF SVs
+# SVA — opcjonalne
 #############################
 
-nsv <- num.sv(as.matrix(counts_filtered), mod1, method = "leek")
+sva_enabled <- isTRUE(config$sva$enabled)
+sva_success <- FALSE
+nsv <- 0
 
-an.error.occured <- TRUE
-
-while (an.error.occured == TRUE) {
-
-  svseq <- try(
-    svaseq(to_sva, mod1, mod0, const = 0, n.sv = nsv),
-    TRUE
+if (sva_enabled) {
+  
+  nsv <- tryCatch(
+    num.sv(as.matrix(counts_filtered), mod1, method = "leek"),
+    error   = function(e) { message("num.sv failed: ", e$message); 0 },
+    warning = function(w) { message("num.sv warning: ", w$message); 0 }
   )
-
-  if (isTRUE(class(svseq) == "try-error")) {
-    nsv <- nsv - 1
-    if (nsv <= 0) stop("SVA failed: nsv dropped to 0.")
-    next
-  } else {
-    an.error.occured <- FALSE
+  
+  if (nsv > 0) {
+    
+    while (nsv > 0) {
+      svseq <- tryCatch(
+        svaseq(to_sva, mod1, mod0, const = 0, n.sv = nsv),
+        error   = function(e) NULL,
+        warning = function(w) NULL
+      )
+      
+      if (!is.null(svseq)) {
+        sva_success <- TRUE
+        break
+      }
+      
+      nsv <- nsv - 1
+      message("SVA failed, retrying with nsv=", nsv)
+    }
+  }
+  
+  if (!sva_success) {
+    message("SVA disabled: fallback to no batch correction")
   }
 }
 
-fsvaobj <- fsva(v$E, mod1, svseq, newdat = NULL)
+#############################
+# FALLBACK gdy SVA nie działa
+#############################
+
+if (!sva_success) {
+  nsv   <- 0
+  mmod1 <- mod1
+  v2    <- v
+  # fsvaobj.db = surowe v$E (bez korekcji)
+  fsvaobj <- list(db = v$E)
+} else {
+  fsvaobj <- fsva(v$E, mod1, svseq, newdat = NULL)
+  mmod1   <- cbind(mod1, svseq$sv)
+  colnames(mmod1) <- c(
+    levels(factor(samples)),
+    paste("X", 1:nsv, sep = "")
+  )
+  v2 <- voom(dge, mmod1, plot = FALSE)
+}
 ```
 
-# PCA with all factors removed `r nsv``
+```{r pca_title_1, results='asis'}
+cat(paste0("# PCA — czynniki usunięte: ", nsv, "\n"))
 
-```{r,warning=FALSE,message=FALSE,fig.height = 7, fig.width=7}
-Plot_PCA(fsvaobj$db,samples,names_col,group_size,no_of_batches,size_of_batches,col_vector,paste("PCA with all factors removed (",nsv,")"))
+Plot_PCA(fsvaobj$db, samples, names_col, group_size,
+         no_of_batches, size_of_batches, col_vector,
+         paste("PCA with", nsv, "factors removed"))
+
 ```
 
 
-```{r,warning=FALSE,message=FALSE}
 
-############################################################
-# BUILD FULL MODEL INCLUDING SVs
-############################################################
-
-mmod1 <- cbind(mod1, svseq$sv)
-colnames(mmod1) <- c(
-  levels(factor(samples)),
-  paste("X", 1:nsv, sep = "")
-)
-
-v2 <- voom(dge, mmod1, plot = FALSE)
-
+```{r limma_fit}
 ############################################################
 # SAFE LIMMA FIT LOOP 
 ############################################################
@@ -229,37 +256,47 @@ v2 <- voom(dge, mmod1, plot = FALSE)
 an.error.occured <- TRUE
 
 while (an.error.occured == TRUE) {
-
+  
   ok <- TRUE
-
+  
   fit <- tryCatch(
     lmFit(v2, mmod1, method = "robust", maxit = 9999),
-    warning = function(w) {
-      ok <<- FALSE
-    }
+    warning = function(w) { ok <<- FALSE }
   )
-
+  
   if (!ok) {
+    
+    if (!sva_success || nsv <= 0) {
+      # brak SVA — nie możemy redukować, prosta metoda
+      message("Robust fit failed, fallback to standard lmFit")
+      fit <- lmFit(v2, mmod1)
+      an.error.occured <- FALSE
+      next
+    }
+    
     nsv <- nsv - 1
-    if (nsv <= 0) stop("Limma fit failed: nsv dropped to 0.")
-
-    svseq <- svaseq(to_sva, mod1, mod0, const = 0, n.sv = nsv)
-
-    mmod1 <- cbind(mod1, svseq$sv)
-    colnames(mmod1) <- c(
-      levels(factor(samples)),
-      paste("X", 1:nsv, sep = "")
-    )
-
-    v2 <- voom(dge, mmod1, plot = FALSE)
-
-    next
+    message("Limma fit failed, retrying with nsv=", nsv)
+    
+    if (nsv == 0) {
+      mmod1   <- mod1
+      v2      <- v
+      fsvaobj <- list(db = v$E)
+    } else {
+      svseq <- svaseq(to_sva, mod1, mod0, const = 0, n.sv = nsv)
+      mmod1 <- cbind(mod1, svseq$sv)
+      colnames(mmod1) <- c(
+        levels(factor(samples)),
+        paste("X", 1:nsv, sep = "")
+      )
+      v2      <- voom(dge, mmod1, plot = FALSE)
+      fsvaobj <- fsva(v$E, mod1, svseq, newdat = NULL)
+    }
+    
   } else {
     an.error.occured <- FALSE
   }
 }
 
-fsvaobj <- fsva(v$E, mod1, svseq, newdat = NULL)
 ```
 
 # Final PCA with `r nsv` factors removed
@@ -271,8 +308,8 @@ Plot_PCA(fsvaobj$db,samples,names_col,group_size,no_of_batches,size_of_batches,c
 
 ```{r,warning=FALSE,message=FALSE}
 
-contrast_string <- config$CONTRAST
-P_val <- config$P_VAL
+contrast_string <- config$dge$contrast
+P_val <- config$dge$p_value
 
 cm <- makeContrasts(contrast_string, levels = mmod1)
 
@@ -320,20 +357,48 @@ res_edgeR2 <- res_edgeR[res_edgeR$FDR<P_val,]
 # Section 3 -DeSeq
  
 ```{r deseq2}
-coldata <- data.frame(condition=samples)
+coldata <- data.frame(condition = samples)
 
-dds <- DESeqDataSetFromMatrix(countData=round(counts_filtered),
-                              colData=coldata,
-                              design=~condition)
+dds <- DESeqDataSetFromMatrix(
+  countData = round(counts_filtered),
+  colData   = coldata,
+  design    = ~condition
+)
 
-dds <- DESeq(dds)
+dds <- estimateSizeFactors(dds)
 
-res_deseq <- results(dds,
-                     contrast=c("condition",
-                                config$GROUP1,
-                                config$GROUP2))
+dds <- tryCatch({
 
-res_deseq2 <- res_deseq[res_deseq$padj<P_val,]
+  estimateDispersions(dds)
+
+}, error = function(e) {
+
+  message(
+    "Standard dispersion fitting failed, ",
+    "using gene-wise estimates as final: ",
+    e$message
+  )
+  dds <- estimateDispersionsGeneEst(dds)
+  dispersions(dds) <- mcols(dds)$dispGeneEst
+  dds
+
+})
+
+dds <- nbinomWaldTest(dds)
+
+batch  <- unique(Description$Batch)[1]
+g1 <- paste0("B", batch, "_", config$dge$group1)
+g2 <- paste0("B", batch, "_", config$dge$group2)
+
+res_deseq <- results(
+  dds,
+  contrast = c("condition", g1, g2)
+)
+
+res_deseq2 <- as.data.frame(
+  res_deseq[!is.na(res_deseq$padj) & res_deseq$padj < P_val, ]
+)
+
 ```
 
 # Number of differentially expressed genes with adjusted p-valye < `r P_val`: `r dim(res_deseq2)[1] `
@@ -341,7 +406,7 @@ res_deseq2 <- res_deseq[res_deseq$padj<P_val,]
 # Venn diagram for all three methods
 
 ```{r venn}
-venn.diagram(
+ven<-venn.diagram(
   x=list(
     Limma=rownames(res_limma2),
     edgeR=rownames(res_edgeR2),
@@ -350,15 +415,16 @@ venn.diagram(
   filename=NULL,
   fill=c("yellow","lightgreen","orchid")
 )
+grid::grid.newpage()
+grid::grid.draw(ven)
 ```
 
 # Barplots for top 10 terms for given GO term
 
 
-```r
 ```{r go}
 
-methods <- c("limma", "edgeR", "DeSeq")
+methods <- c("limma", "edgeR", "deseq")
 ontologies <- c("BP", "MF", "CC")
 
 GO_results <- list()
@@ -369,8 +435,13 @@ for (method in methods) {
 
   if (nrow(res_obj) == 0) next
 
-  geneList <- res_obj$adj.P.Val
-  names(geneList) <- rownames(res_obj)
+    get_pval_col <- function(res_obj) {
+    if ("adj.P.Val" %in% colnames(res_obj)) return(res_obj$adj.P.Val)
+    if ("FDR"       %in% colnames(res_obj)) return(res_obj$FDR)
+    if ("padj"      %in% colnames(res_obj)) return(res_obj$padj)
+    }
+    geneList <- get_pval_col(res_obj)
+    names(geneList) <- rownames(res_obj)
 
   for (ont in ontologies) {
 
@@ -380,7 +451,7 @@ for (method in methods) {
                   geneSel = topDiffGenes,
                   nodeSize = 10,
                   annot = annFUN.org,
-                  mapping = config$GO_MAPPING,
+                  mapping = config$dge$go_mapping,
                   ID = "ensembl")
 
     resultFisher <- runTest(GOdata,
@@ -398,7 +469,7 @@ for (method in methods) {
     colnames(GO.allRes)[6] <- "adj.P.Val"
 
     GO.allRes2 <- GO.allRes[
-      as.numeric(GO.allRes$adj.P.Val) < config$TH_GO,
+      as.numeric(GO.allRes$adj.P.Val) < config$dge$go_threshold,
     ]
 
     ############################################################
@@ -437,7 +508,7 @@ for (method in methods) {
 
     write.csv(GO.allRes2,
               paste0("Results_", method, "_", ont,
-                     "_", config$TH_GO, ".csv"),
+                     "_", config$dge$go_threshold, ".csv"),
               row.names = FALSE)
 
     # store significant GO IDs for Venn
