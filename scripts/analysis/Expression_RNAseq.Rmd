@@ -1,0 +1,477 @@
+---
+title: "Differential expression and GO analysis"
+output:
+  pdf_document:
+    toc: true
+    number_sections: true
+params:
+  quant_method: "hisat2"        # hisat2 | kallisto
+  config_path: "../config"
+  utils_path: "../scripts/R/utils.R"
+  output_dir: "results"
+---
+
+```{r setup, include=FALSE}
+library(yaml)
+library(limma)
+library(edgeR)
+library(DESeq2)
+library(sva)
+library(topGO)
+library(biomaRt)
+library(ggplot2)
+library(gplots)
+library(RColorBrewer)
+library(VennDiagram)
+library(gridExtra)
+library(statmod)
+
+config <- read_yaml(file.path(params$config_path, "config.yaml"))
+
+source(params$utils_path)
+
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r data_loading}
+
+Description <- read.csv(file.path(params$config_path, "Description.csv"))
+
+if (max(Description$Repetition) < 2) {
+  stop("Too few repetitions (min 2 required)")
+}
+
+if (params$quant_method == "hisat2") {
+
+  base_path <- file.path(config$project$output_dir,
+                         config$project$name,
+                         "genome")
+
+  count_matrix <- read.csv(
+    file.path(base_path, "gene_count_matrix.csv"),
+    row.names = 1
+  )
+
+} else if (params$quant_method == "kallisto") {
+
+  base_path <- file.path(config$project$output_dir,
+                         config$project$name,
+                         "trans/kallisto")
+
+  data_list <- lapply(Description$Group, function(name) {
+    read.table(
+      file.path(base_path, name, "abundance.tsv"),
+      header = TRUE,
+      row.names = 1
+    )$est_counts
+  })
+
+  count_matrix <- do.call(cbind, data_list)
+  rownames(count_matrix) <- rownames(
+    read.table(file.path(base_path,
+                         Description$Group[1],
+                         "abundance.tsv"),
+               header = TRUE,
+               row.names = 1)
+  )
+}
+
+dataset_size <- nrow(Description)
+
+Description$Name <- paste(
+  "B",
+  Description$Batch,
+  "_",
+  Description$Condition,
+  sep=""
+)
+
+colnames(count_matrix) <- Description$Name
+count_matrix <- count_matrix[, order(colnames(count_matrix))]
+```
+```{r filtering}
+
+th1 <- 5
+th2 <- 2
+
+n1 <- round(ncol(count_matrix)/3)
+n2 <- n1*2
+
+filter1 <- apply(count_matrix,1,function(x) length(x[x>th1])>=n1)
+filter2 <- apply(count_matrix,1,function(x) length(x[x>th2])>=n2)
+
+filter <- filter1 & filter2
+
+counts_filtered <- count_matrix[filter,]
+counts_log <- log2(counts_filtered+0.5)
+```
+
+# Heatmap raw data
+
+```{r,warning=FALSE,message=FALSE,fig.align='left'}
+IQR <- apply(counts_filtered,1,IQR)
+topVar <- order(IQR,decreasing=TRUE)[1:100]
+
+heatmap.2(as.matrix(counts_log[topVar,]),
+          scale="row",
+          trace="none",
+          density="none",
+          labRow="",
+          dendrogram="column",
+          key=FALSE)
+```
+
+```{r design_setup}
+samples <- sort(paste("B",Description$Batch,"_",Description$Condition,sep=""))
+names_col <- unique(samples)
+group_size <- length(samples)/length(names_col)
+
+no_of_batches <- length(unique(Description$Batch))
+size_of_batches <- table(Description$Batch)
+
+qual_col_pals <- brewer.pal.info[brewer.pal.info$category=="qual",]
+col_vector <- unlist(mapply(brewer.pal,
+                            qual_col_pals$maxcolors,
+                            rownames(qual_col_pals)))
+```
+
+# PCA raw data
+
+```{r,warning=FALSE,message=FALSE,fig.align='left',fig.height=7,fig.width=7}
+Plot_PCA(counts_log,
+         samples,
+         names_col,
+         group_size,
+         no_of_batches,
+         size_of_batches,
+         col_vector,
+         "PCA before SVA")
+```
+
+# Violinplot raw data
+
+```{r,warning=FALSE,message=FALSE,fig.height = 5}
+Plot_violin(counts_filtered, samples, group_size)
+```
+
+```{r limma_sva}
+#############################
+# LIMMA + VOOM + ROBUST SVA 
+#############################
+
+dge <- DGEList(counts = counts_filtered, group = samples)
+dge <- calcNormFactors(dge)
+
+## Design matrices
+mod1 <- model.matrix(~0 + as.factor(samples))
+mod0 <- model.matrix(~1, data = as.factor(samples))
+
+colnames(mod1) <- levels(factor(samples))
+rownames(mod1) <- colnames(counts_filtered)
+
+## Voom transform
+v <- voom(dge, mod1, plot = FALSE)
+
+to_sva <- 2^v$E
+
+#############################
+# ESTIMATE NUMBER OF SVs
+#############################
+
+nsv <- num.sv(as.matrix(counts_filtered), mod1, method = "leek")
+
+an.error.occured <- TRUE
+
+while (an.error.occured == TRUE) {
+
+  svseq <- try(
+    svaseq(to_sva, mod1, mod0, const = 0, n.sv = nsv),
+    TRUE
+  )
+
+  if (isTRUE(class(svseq) == "try-error")) {
+    nsv <- nsv - 1
+    if (nsv <= 0) stop("SVA failed: nsv dropped to 0.")
+    next
+  } else {
+    an.error.occured <- FALSE
+  }
+}
+
+fsvaobj <- fsva(v$E, mod1, svseq, newdat = NULL)
+```
+
+# PCA with all factors removed `r nsv``
+
+```{r,warning=FALSE,message=FALSE,fig.height = 7, fig.width=7}
+Plot_PCA(fsvaobj$db,samples,names_col,group_size,no_of_batches,size_of_batches,col_vector,paste("PCA with all factors removed (",nsv,")"))
+```
+
+
+```{r,warning=FALSE,message=FALSE}
+
+############################################################
+# BUILD FULL MODEL INCLUDING SVs
+############################################################
+
+mmod1 <- cbind(mod1, svseq$sv)
+colnames(mmod1) <- c(
+  levels(factor(samples)),
+  paste("X", 1:nsv, sep = "")
+)
+
+v2 <- voom(dge, mmod1, plot = FALSE)
+
+############################################################
+# SAFE LIMMA FIT LOOP 
+############################################################
+
+an.error.occured <- TRUE
+
+while (an.error.occured == TRUE) {
+
+  ok <- TRUE
+
+  fit <- tryCatch(
+    lmFit(v2, mmod1, method = "robust", maxit = 9999),
+    warning = function(w) {
+      ok <<- FALSE
+    }
+  )
+
+  if (!ok) {
+    nsv <- nsv - 1
+    if (nsv <= 0) stop("Limma fit failed: nsv dropped to 0.")
+
+    svseq <- svaseq(to_sva, mod1, mod0, const = 0, n.sv = nsv)
+
+    mmod1 <- cbind(mod1, svseq$sv)
+    colnames(mmod1) <- c(
+      levels(factor(samples)),
+      paste("X", 1:nsv, sep = "")
+    )
+
+    v2 <- voom(dge, mmod1, plot = FALSE)
+
+    next
+  } else {
+    an.error.occured <- FALSE
+  }
+}
+
+fsvaobj <- fsva(v$E, mod1, svseq, newdat = NULL)
+```
+
+# Final PCA with `r nsv` factors removed
+
+```{r,warning=FALSE,message=FALSE,fig.height = 7}
+Plot_PCA(fsvaobj$db,samples,names_col,group_size,no_of_batches,size_of_batches,col_vector,paste("PCA with ",nsv," factors removed"))
+
+```
+
+```{r,warning=FALSE,message=FALSE}
+
+contrast_string <- config$CONTRAST
+P_val <- config$P_VAL
+
+cm <- makeContrasts(contrast_string, levels = mmod1)
+
+cf <- contrasts.fit(fit, cm)
+fe <- eBayes(cf)
+
+tt <- topTable(fe, num = Inf)
+
+pr <- 1 - propTrueNull(tt$P.Value, method = "convest")
+cfe <- eBayes(cf, proportion = pr)
+
+res_limma <- topTable(
+  cfe,
+  number = Inf,
+  adjust.method = "BH",
+  sort.by = "none"
+)
+
+res_limma2 <- res_limma[res_limma$adj.P.Val < P_val, ]
+```
+
+# Number of differentially expressed genes with adjusted p-valye < `r P_val`: `r dim(res_limma2)[1] ``
+
+# Section 2 -EdgeR
+
+```{r edger}
+y <- DGEList(counts=counts_filtered, group=samples)
+keep <- filterByExpr(y)
+y <- y[keep,,keep.lib.sizes=FALSE]
+y <- calcNormFactors(y)
+
+y <- estimateDisp(y,mmod1,robust=TRUE)
+fit_edge <- glmQLFit(y,mmod1,robust=TRUE)
+
+qlf <- glmQLFTest(fit_edge,contrast=cm)
+
+res_edgeR <- topTags(qlf,Inf)$table
+res_edgeR2 <- res_edgeR[res_edgeR$FDR<P_val,]
+```
+
+
+# Number of differentially expressed genes with adjusted p-valye < `r P_val`: `r dim(res_edgeR2)[1] ``
+
+
+# Section 3 -DeSeq
+ 
+```{r deseq2}
+coldata <- data.frame(condition=samples)
+
+dds <- DESeqDataSetFromMatrix(countData=round(counts_filtered),
+                              colData=coldata,
+                              design=~condition)
+
+dds <- DESeq(dds)
+
+res_deseq <- results(dds,
+                     contrast=c("condition",
+                                config$GROUP1,
+                                config$GROUP2))
+
+res_deseq2 <- res_deseq[res_deseq$padj<P_val,]
+```
+
+# Number of differentially expressed genes with adjusted p-valye < `r P_val`: `r dim(res_deseq2)[1] `
+
+# Venn diagram for all three methods
+
+```{r venn}
+venn.diagram(
+  x=list(
+    Limma=rownames(res_limma2),
+    edgeR=rownames(res_edgeR2),
+    DESeq2=rownames(res_deseq2)
+  ),
+  filename=NULL,
+  fill=c("yellow","lightgreen","orchid")
+)
+```
+
+# Barplots for top 10 terms for given GO term
+
+
+```r
+```{r go}
+
+methods <- c("limma", "edgeR", "DeSeq")
+ontologies <- c("BP", "MF", "CC")
+
+GO_results <- list()
+
+for (method in methods) {
+
+  res_obj <- get(paste0("res_", method, "2"))
+
+  if (nrow(res_obj) == 0) next
+
+  geneList <- res_obj$adj.P.Val
+  names(geneList) <- rownames(res_obj)
+
+  for (ont in ontologies) {
+
+    GOdata <- new("topGOdata",
+                  ontology = ont,
+                  allGenes = geneList,
+                  geneSel = topDiffGenes,
+                  nodeSize = 10,
+                  annot = annFUN.org,
+                  mapping = config$GO_MAPPING,
+                  ID = "ensembl")
+
+    resultFisher <- runTest(GOdata,
+                            algorithm = "parentchild",
+                            statistic = "fisher")
+
+    used <- usedGO(GOdata)
+
+    GO.allRes <- GenTable(GOdata,
+                          parentchildFisher = resultFisher,
+                          orderBy = "parentchildFisher",
+                          ranksOf = "parentchildFisher",
+                          topNodes = length(used))
+
+    colnames(GO.allRes)[6] <- "adj.P.Val"
+
+    GO.allRes2 <- GO.allRes[
+      as.numeric(GO.allRes$adj.P.Val) < config$TH_GO,
+    ]
+
+    ############################################################
+    # BARPLOT TOP 10
+    ############################################################
+
+    if (nrow(GO.allRes2) > 0) {
+
+      b <- min(10, nrow(GO.allRes2))
+
+      # handle "< 1e-30"
+      GO.allRes2$adj.P.Val[GO.allRes2$adj.P.Val == "< 1e-30"] <- 1e-30
+      GO.allRes2$adj.P.Val <- as.numeric(GO.allRes2$adj.P.Val)
+
+      par(mai = c(1, 3, 1, 1))
+
+      barplot(
+        abs(log(GO.allRes2$adj.P.Val[b:1])),
+        horiz = TRUE,
+        names.arg = GO.allRes2$Term[b:1],
+        main = paste("Top", b, ont, "for", method),
+        xlab = "abs(log(p-value))",
+        las = 1,
+        col = "darkblue",
+        cex.names = 0.7
+      )
+    }
+
+    ############################################################
+    # SAVE
+    ############################################################
+
+    write.csv(GO.allRes,
+              paste0("Results_", method, "_", ont, ".csv"),
+              row.names = FALSE)
+
+    write.csv(GO.allRes2,
+              paste0("Results_", method, "_", ont,
+                     "_", config$TH_GO, ".csv"),
+              row.names = FALSE)
+
+    # store significant GO IDs for Venn
+    GO_results[[ont]][[method]] <- GO.allRes2$GO.ID
+  }
+}
+```
+
+# Venn diagrams for topGO
+
+```{r,warning=FALSE,message=FALSE}
+
+for (ont in ontologies) {
+
+  if (is.null(GO_results[[ont]])) next
+
+  # remove empty method entries
+  venn_list <- GO_results[[ont]]
+  venn_list <- venn_list[sapply(venn_list, length) > 0]
+
+  if (length(venn_list) < 2) {
+    message("Not enough results for Venn in ", ont)
+    next
+  }
+
+  ven <- venn.diagram(
+    x = venn_list,
+    filename = NULL,
+    fill = brewer.pal(length(venn_list), "Set2"),
+    main = paste("GO", ont)
+  )
+
+  grid::grid.newpage()
+  grid::grid.draw(ven)
+}
+
+```
