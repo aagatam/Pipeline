@@ -23,6 +23,7 @@ SAMPLES = samples_df["sample"].tolist()
 include: "rules/uncompress.smk"
 include: "rules/trim.smk"
 include: "rules/quality_control.smk"
+include: "rules/dea.smk"
 
 if config["alignment"]["method"] == "hisat2":
     include: "rules/align_hisat2.smk"
@@ -56,6 +57,11 @@ if config["alignment"]["method"] == "kallisto":
     final_targets += expand(
         f"{OUTDIR}/{PROJECT}/trans/kallisto/{{sample}}/abundance.tsv",
         sample=SAMPLES
+    )
+    
+if config["dge"]["enabled"]:
+    final_targets.append(
+        f"{OUTDIR}/{PROJECT}/dea/Expression_RNAseq.pdf"
     )
 
 rule all:
