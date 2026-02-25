@@ -22,7 +22,7 @@ trimming:
   threads: 4
 
 alignment:
-  method: hisat2 # hisat2 | kallisto
+  method: kallisto # hisat2 | kallisto
   threads: 8
 
 spladder:

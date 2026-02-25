@@ -1,45 +1,87 @@
-rule al_kallisto_end:
-    input:
-        report = final_path + "/report_align_count.html",
-        index = index_path + "/indexes/kallisto_index.idx"
+########################################
+# Kallisto transcriptome quantification
+########################################
 
-rule indexTrans:
-    input:
-        trans = config["TRANS"]
-    output:
-        index = index_path + "/indexes/kallisto_index.idx"
-    priority: 10
-    shell:
-        "kallisto index -i {output.index} {input.trans}"
+TRANSCRIPTOME = config["reference"]["transcriptome_fasta"]
+THREADS = config["alignment"]["threads"]
+LAYOUT = config["sequencing"]["layout"]
 
-# Single rule for alignment that handles both paired and single-end
-rule alignment:
+INDEX_PATH = f"{OUTDIR}/{PROJECT}/trans/index/kallisto_index.idx"
+
+########################################
+# Build kallisto index 
+########################################
+
+rule kallisto_index:
     input:
-        index = index_path + "/indexes/kallisto_index.idx",
-        # Input from trimmed uncompressed files
-        read1 = f"{final_path}/trimmed_uncompressed/{{sample}}_val_1.fastq",
-        read2 = f"{final_path}/trimmed_uncompressed/{{sample}}_val_2.fastq",
-        single = f"{final_path}/trimmed_uncompressed/{{sample}}_trimmed.fastq"
+        TRANSCRIPTOME
     output:
-        out = directory(final_path + "/kallisto/{sample}"),
-        log = final_path + "/kallisto/{sample}_log.txt"
-    params:
-        is_paired = lambda wildcards: config.get("end", "pair") == "pair"
-    benchmark:
-        final_path + "/benchmarks/{sample}.kallisto.benchmark.txt"
+        INDEX_PATH
+    log:
+        f"{OUTDIR}/{PROJECT}/trans/logs/kallisto_index.log"
+    threads: 1
     shell:
         """
-        if [ "{params.is_paired}" == "True" ]; then
-            kallisto quant --bias --single-overhang --fusion -i {input.index} -o {output.out} -t {config[NCORE]} {input.read1} {input.read2} &>{output.log}
-        else
-            kallisto quant --single --bias --single-overhang --fusion -i {input.index} -o {output.out} -t {config[NCORE]} -l 130 -s 30 {input.single} &>{output.log}
-        fi
+        mkdir -p {OUTDIR}/{PROJECT}/trans/index
+        mkdir -p {OUTDIR}/{PROJECT}/trans/logs
+
+        kallisto index \
+        -k 15 \
+            -i {output} \
+            {input} \
+            > {log} 2>&1
         """
 
-rule multiqc_Report:
-    input:
-        count_summary = expand(final_path + "/kallisto/{sample}_log.txt", sample = samples)
-    output:
-        report = final_path + "/report_align_count.html"
-    shell:
-        "multiqc -f {input.count_summary} --filename {output.report}"
+
+########################################
+# Quantify samples
+########################################
+
+if LAYOUT == "paired":
+
+    rule kallisto_quant:
+        input:
+            index = rules.kallisto_index.output,
+            r1 = f"{OUTDIR}/{PROJECT}/trim/{{sample}}_R1.trimmed.fastq.gz",
+            r2 = f"{OUTDIR}/{PROJECT}/trim/{{sample}}_R2.trimmed.fastq.gz"
+        output:
+            f"{OUTDIR}/{PROJECT}/trans/kallisto/{{sample}}/abundance.tsv"
+        log:
+            f"{OUTDIR}/{PROJECT}/trans/logs/{{sample}}.kallisto.log"
+        threads: THREADS
+        shell:
+            """
+            mkdir -p {OUTDIR}/{PROJECT}/trans/kallisto/{wildcards.sample}
+            mkdir -p {OUTDIR}/{PROJECT}/trans/logs
+
+            kallisto quant \
+                -i {input.index} \
+                -o {OUTDIR}/{PROJECT}/trans/kallisto/{wildcards.sample} \
+                -t {threads} \
+                {input.r1} {input.r2} \
+                > {log} 2>&1
+            """
+
+else:
+
+    rule kallisto_quant:
+        input:
+            index = rules.kallisto_index.output,
+            r1 = f"{OUTDIR}/{PROJECT}/trim/{{sample}}_R1.trimmed.fastq.gz"
+        output:
+            f"{OUTDIR}/{PROJECT}/trans/kallisto/{{sample}}/abundance.tsv"
+        log:
+            f"{OUTDIR}/{PROJECT}/trans/logs/{{sample}}.kallisto.log"
+        threads: THREADS
+        shell:
+            """
+            mkdir -p {OUTDIR}/{PROJECT}/trans/kallisto/{wildcards.sample}
+            mkdir -p {OUTDIR}/{PROJECT}/trans/logs
+
+            kallisto quant \
+                -i {input.index} \
+                -o {OUTDIR}/{PROJECT}/trans/kallisto/{wildcards.sample} \
+                -t {threads} \
+                {input.r1} \
+                > {log} 2>&1
+            """
