@@ -37,4 +37,11 @@ interproscan:
 
 # Differential expression
 dge:
-  method: deseq2
+  enabled: true
+  contrast: "B1_treated - B1_control"
+  group1: "treated"
+  group2: "control"
+  p_value: 0.05
+  go_threshold: 0.05
+  go_mapping: org.Hs.eg.db
+  sva.enabled: False
