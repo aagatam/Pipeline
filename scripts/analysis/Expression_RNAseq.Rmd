@@ -40,6 +40,13 @@ config <- read_yaml(file.path(params$config_path, "config.yaml"))
 source(params$utils_path)
 
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+output_dir <- file.path(
+  config$project$output_dir,
+  config$project$name,
+  "dea"
+)
+
+dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 ```
 
 ```{r data_loading}
@@ -449,7 +456,8 @@ ven<-venn.diagram(
     DESeq2=rownames(res_deseq2)
   ),
   filename=NULL,
-  fill=c("yellow","lightgreen","orchid")
+  fill=c("yellow","lightgreen","orchid"),
+disable.logging = TRUE
 )
 grid::grid.newpage()
 grid::grid.draw(ven)
@@ -539,11 +547,11 @@ for (method in methods) {
     ############################################################
 
     write.csv(GO.allRes,
-              paste0("Results_", method, "_", ont, ".csv"),
+              paste0(output_dir,"/Results_", method, "_", ont, ".csv"),
               row.names = FALSE)
 
     write.csv(GO.allRes2,
-              paste0("Results_", method, "_", ont,
+              paste0(output_dir,"/Results_", method, "_", ont,
                      "_", config$dge$go_threshold, ".csv"),
               row.names = FALSE)
 
@@ -574,11 +582,29 @@ for (ont in ontologies) {
     x = venn_list,
     filename = NULL,
     fill = brewer.pal(length(venn_list), "Set2"),
-    main = paste("GO", ont)
+    main = paste("GO", ont),
+    disable.logging = TRUE
   )
 
   grid::grid.newpage()
   grid::grid.draw(ven)
 }
 
+write.csv(res_limma,
+          file.path(output_dir, "DEG_limma_all.csv"))
+
+write.csv(res_limma2,
+          file.path(output_dir, "DEG_limma_sig.csv"))
+
+write.csv(res_edgeR,
+          file.path(output_dir, "DEG_edgeR_all.csv"))
+
+write.csv(res_edgeR2,
+          file.path(output_dir, "DEG_edgeR_sig.csv"))
+
+write.csv(as.data.frame(res_deseq),
+          file.path(output_dir, "DEG_deseq_all.csv"))
+
+write.csv(res_deseq2,
+          file.path(output_dir, "DEG_deseq_sig.csv"))
 ```
