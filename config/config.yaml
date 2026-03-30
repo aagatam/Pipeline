@@ -9,9 +9,9 @@ input:
 
 # References
 reference:
-  genome_fasta: Test_data/genome.fa
-  annotation_gtf: Test_data/annotation.gtf
-  transcriptome_fasta: Test_data/transcripts.fa
+  genome_fasta: Test_data/Mus_musculus.GRCm39.dna.toplevel.fa
+  annotation_gtf: Test_data/Mus_musculus.GRCm39.115.gtf
+  transcriptome_fasta: Test_data/Mus_musculus.GRCm39.all.fa
 
 sequencing:
   layout: paired # single | paired
@@ -43,5 +43,9 @@ dge:
   group2: "control"
   p_value: 0.05
   go_threshold: 0.05
-  go_mapping: org.Hs.eg.db
+  go_mapping: org.Mm.eg.db
   sva.enabled: False
+
+# Alternative splicing
+ase:
+  enabled: false

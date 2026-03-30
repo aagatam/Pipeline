@@ -32,7 +32,7 @@ elif config["alignment"]["method"] == "kallisto":
 else:
     raise ValueError("Invalid alignment method in config.")
 
-if config["spladder"]["enabled"]:
+if config["ase"]["enabled"]:
     include: "rules/spladder.smk"
 
 if config["bisbee"]["enabled"]:
@@ -63,6 +63,13 @@ if config["dge"]["enabled"]:
     final_targets.append(
         f"{OUTDIR}/{PROJECT}/dea/Expression_RNAseq.pdf"
     )
+
+if config["ase"]["enabled"]:
+
+    if config["alignment"]["method"] != "hisat2":
+        raise ValueError("ASE requires hisat2 alignment.")
+
+    final_targets.append(f"{OUTDIR}/{PROJECT}/spladder")
 
 rule all:
     input:
