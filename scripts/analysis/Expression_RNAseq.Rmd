@@ -29,7 +29,7 @@ library(GenomicFeatures)
 
 #For debug
 #params <- list(
-#  quant_method = "kallisto",
+#  quant_method = "hisat2",
 # config_path = "config",
 #  samples_path = "Test_data/samples.tsv",
 #  utils_path = "scripts/utils.R"
@@ -479,13 +479,14 @@ for (method in methods) {
 
   if (nrow(res_obj) == 0) next
 
-    get_pval_col <- function(res_obj) {
-    if ("adj.P.Val" %in% colnames(res_obj)) return(res_obj$adj.P.Val)
-    if ("FDR"       %in% colnames(res_obj)) return(res_obj$FDR)
-    if ("padj"      %in% colnames(res_obj)) return(res_obj$padj)
-    }
-    geneList <- get_pval_col(res_obj)
-    names(geneList) <- rownames(res_obj)
+  get_pval_col <- function(res_obj) {
+  if ("adj.P.Val" %in% colnames(res_obj)) return(res_obj$adj.P.Val)
+  if ("FDR"       %in% colnames(res_obj)) return(res_obj$FDR)
+  if ("padj"      %in% colnames(res_obj)) return(res_obj$padj)
+  }
+  geneList <- get_pval_col(res_obj)
+  gene_ids <- sub("\\|.*", "", rownames(res_obj))
+  names(geneList) <- gene_ids
 
   for (ont in ontologies) {
 
