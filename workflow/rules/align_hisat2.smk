@@ -5,6 +5,8 @@
 GENOME = config["reference"]["genome_fasta"]
 THREADS = config["alignment"]["threads"]
 LAYOUT = config["sequencing"]["layout"]
+GTF = config["reference"]["annotation_gtf"]
+
 
 INDEX_PREFIX = f"{OUTDIR}/{PROJECT}/genome/index/hisat2_index"
 
@@ -67,4 +69,64 @@ rule hisat2_align:
         fi
 
         samtools index {output.bam}
+        """
+
+########################################
+# StringTie quantification
+########################################
+
+rule stringtie_quant:
+    input:
+        bam = f"{OUTDIR}/{PROJECT}/genome/bam/{{sample}}.sorted.bam",
+        gtf = GTF
+    output:
+        gtf = f"{OUTDIR}/{PROJECT}/genome/stringtie/{{sample}}.gtf"
+    log:
+        f"{OUTDIR}/{PROJECT}/genome/logs/{{sample}}.stringtie.log"
+    threads: THREADS
+    shell:
+        """
+        mkdir -p {OUTDIR}/{PROJECT}/genome/stringtie
+        mkdir -p {OUTDIR}/{PROJECT}/genome/logs
+
+        stringtie {input.bam} \
+            -G {input.gtf} \
+            -e \
+            -B \
+            -o {output.gtf} \
+            -p {threads} \
+            > {log} 2>&1
+        """
+
+########################################
+# Generate count matrices (prepDE)
+########################################
+
+rule prepDE:
+    input:
+        expand(
+            f"{OUTDIR}/{PROJECT}/genome/stringtie/{{sample}}.gtf",
+            sample=SAMPLES
+        )
+    output:
+        gene_matrix = f"{OUTDIR}/{PROJECT}/genome/gene_count_matrix.csv",
+        transcript_matrix = f"{OUTDIR}/{PROJECT}/genome/transcript_count_matrix.csv"
+    params:
+        sample_list = f"{OUTDIR}/{PROJECT}/genome/stringtie/sample_list.txt"
+    log:
+        f"{OUTDIR}/{PROJECT}/genome/logs/prepDE.log"
+    shell:
+        """
+        # Create sample list file
+        rm -f {params.sample_list}
+        for f in {OUTDIR}/{PROJECT}/genome/stringtie/*.gtf; do
+            name=$(basename $f .gtf)
+            echo -e "$name\t$f" >> {params.sample_list}
+        done
+
+        python scripts/python/prepDE.py \
+            -i {params.sample_list} \
+            -g {output.gene_matrix} \
+            -t {output.transcript_matrix} \
+            > {log} 2>&1
         """
