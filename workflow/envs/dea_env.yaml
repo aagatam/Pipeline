@@ -13,6 +13,7 @@ dependencies:
   - bioconductor-topgo
   - bioconductor-biomart
   - bioconductor-GenomicFeatures
+  - bioconductor-org.Mm.eg.db
   - r-ggplot2
   - r-gplots
   - r-rcolorbrewer
@@ -20,3 +21,4 @@ dependencies:
   - r-statmod
   - r-venndiagram
   - r-rmarkdown
+  - r-reshape2
