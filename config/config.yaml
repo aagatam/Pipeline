@@ -48,4 +48,4 @@ dge:
 
 # Alternative splicing
 ase:
-  enabled: false
+  enabled: true

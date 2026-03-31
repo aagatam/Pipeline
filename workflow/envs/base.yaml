@@ -1,0 +1,15 @@
+name: Pipeline_new
+channels:
+  - conda-forge
+  - bioconda
+
+dependencies:
+  - python=3.10
+  - snakemake
+  - gzip
+  - fastp
+  - fastqc
+  - multiqc
+  - hisat2
+  - samtools
+  - kallisto

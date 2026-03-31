@@ -1,9 +1,13 @@
-name: spladder243
+# envs/spladder.yaml
 channels:
   - conda-forge
   - bioconda
+
 dependencies:
   - python=3.8
+  - numpy=1.23
+  - scipy
+  - h5py
   - pip
   - pip:
       - spladder==2.4.3

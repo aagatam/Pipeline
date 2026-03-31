@@ -42,9 +42,11 @@ rule spladder_build:
         gtf = ANNOTATION
     output:
          directory(SPLADDER_OUT)
-    threads: 8
+    threads: 1
     params:
         bam_list = lambda wildcards, input: ",".join(input.bam)
+    conda:
+        "../envs/spladder.yaml"
     shell:
         """
         mkdir -p {output}
